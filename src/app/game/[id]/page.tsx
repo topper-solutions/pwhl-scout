@@ -1,6 +1,7 @@
 import { getGameSummary, getPlayByPlay } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
-import { val, playerName } from "@/lib/utils";
+import { val, playerName, isGameLive } from "@/lib/utils";
+import { LiveGameOverlay } from "@/components/live-game-overlay";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -249,6 +250,13 @@ export default async function GamePage({
           )}
         </div>
       </div>
+
+      <LiveGameOverlay
+        gameId={gameId}
+        homeTeamId={String(summary.home?.team_id ?? summary.home?.id ?? 0)}
+        visitorTeamId={String(summary.visitor?.team_id ?? summary.visitor?.id ?? 0)}
+        isLive={isGameLive(status)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scoring summary */}
