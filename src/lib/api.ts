@@ -1,3 +1,9 @@
+// SECURITY NOTE: These APIs require credentials as URL query parameters.
+// This is inherent to the HockeyTech and Firebase REST APIs — there is no
+// header-based auth option. All fetch calls are server-side only (no "use client"
+// directive, no NEXT_PUBLIC_ prefix), so credentials never reach the client bundle.
+// The keys themselves are publicly visible in thepwhl.com's client-side JS.
+// Ensure logging/monitoring tools strip query params from these request URLs.
 const HOCKEYTECH_BASE = "https://lscluster.hockeytech.com/feed/index.php";
 const HOCKEYTECH_KEY = process.env.HOCKEYTECH_API_KEY;
 const HOCKEYTECH_CLIENT = process.env.HOCKEYTECH_CLIENT_CODE ?? "pwhl";
@@ -56,9 +62,19 @@ function parseHockeyTechResponse(body: string) {
   if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
     return JSON.parse(trimmed.slice(1, -1));
   }
+  // Attempt raw JSON parse — log if it doesn't look like standard JSON
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    console.warn(
+      "[api] HockeyTech response is not recognized JSON or JSONP format. " +
+      `First 100 chars: ${trimmed.slice(0, 100)}`
+    );
+  }
   return JSON.parse(trimmed);
 }
 
+// Rate limiting: Next.js ISR (revalidate: 60) limits upstream calls to at most
+// once per 60 seconds per route per server instance. For higher traffic, consider
+// adding a circuit breaker to stop calling a failing upstream after repeated errors.
 async function htFetch(params: string) {
   if (!HOCKEYTECH_KEY) throw new Error("HOCKEYTECH_API_KEY is not set");
   const url = `${HOCKEYTECH_BASE}?${params}&key=${HOCKEYTECH_KEY}&client_code=${HOCKEYTECH_CLIENT}`;

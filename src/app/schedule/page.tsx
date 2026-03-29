@@ -16,8 +16,9 @@ export const metadata = {
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: { team?: string };
+  searchParams: Promise<{ team?: string }>;
 }) {
+  const resolvedParams = await searchParams;
   let games: any[] = [];
 
   let fetchError = false;
@@ -41,7 +42,7 @@ export default async function SchedulePage({
     );
   }
 
-  const teamFilter = searchParams.team ? parseInt(searchParams.team) : null;
+  const teamFilter = resolvedParams.team ? parseInt(resolvedParams.team) : null;
 
   if (teamFilter) {
     games = games.filter(

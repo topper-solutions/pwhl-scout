@@ -16,10 +16,11 @@ export const metadata = {
 export default async function StatsPage({
   searchParams,
 }: {
-  searchParams: { view?: string; team?: string };
+  searchParams: Promise<{ view?: string; team?: string }>;
 }) {
-  const view = searchParams.view === "goalies" ? "goalies" : "skaters";
-  const teamFilter = searchParams.team ? parseInt(searchParams.team) : null;
+  const resolvedParams = await searchParams;
+  const view = resolvedParams.view === "goalies" ? "goalies" : "skaters";
+  const teamFilter = resolvedParams.team ? parseInt(resolvedParams.team) : null;
 
   let players: any[] = [];
 

@@ -12,11 +12,12 @@ import { val } from "@/lib/utils";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const { id } = await params;
   return {
-    title: `Game #${params.id} | PWHL Scout`,
-    description: `PWHL game details and box score for game ${params.id}.`,
+    title: `Game #${id} | PWHL Scout`,
+    description: `PWHL game details and box score for game ${id}.`,
   };
 }
 
@@ -111,9 +112,10 @@ function PenaltyRow({ pen }: { pen: any }) {
 export default async function GamePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const gameId = parseInt(params.id);
+  const { id } = await params;
+  const gameId = parseInt(id);
   if (isNaN(gameId) || gameId < 1) notFound();
 
   let summary: any = null;

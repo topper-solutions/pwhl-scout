@@ -12,9 +12,10 @@ import { formatDate } from "@/lib/utils";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const team = getTeamMeta(parseInt(params.id));
+  const { id } = await params;
+  const team = getTeamMeta(parseInt(id));
   return {
     title: `${team.city} ${team.name} | PWHL Scout`,
     description: `Roster, schedule, and stats for the ${team.city} ${team.name}.`,
@@ -26,9 +27,10 @@ export async function generateMetadata({
 export default async function TeamPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const teamId = parseInt(params.id);
+  const { id } = await params;
+  const teamId = parseInt(id);
   if (isNaN(teamId) || teamId < 1) notFound();
   const team = getTeamMeta(teamId);
 
