@@ -1,6 +1,6 @@
-import { getSkaterStats, getGoalieStats, extractSiteKit } from "@/lib/api";
+import { getSkaterStats, getGoalieStats } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
-import { val } from "@/lib/utils";
+import { val, playerName } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
 
@@ -26,15 +26,9 @@ export default async function StatsPage({
 
   let fetchError = false;
   try {
-    if (view === "goalies") {
-      const data = await getGoalieStats();
-      const raw = extractSiteKit(data, "Players");
-      players = Array.isArray(raw) ? raw : [];
-    } else {
-      const data = await getSkaterStats();
-      const raw = extractSiteKit(data, "Players");
-      players = Array.isArray(raw) ? raw : [];
-    }
+    players = view === "goalies"
+      ? await getGoalieStats()
+      : await getSkaterStats();
   } catch (error) {
     console.error("[StatsPage] Failed to fetch player stats:", error);
     fetchError = true;
@@ -185,9 +179,7 @@ export default async function StatsPage({
             <tbody>
               {players.map((p: any, i: number) => {
                 const team = getTeamMeta(p.team_id ?? p.team_code ?? 0);
-                const name =
-                  p.name ??
-                  `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim();
+                const name = playerName(p);
 
                 return (
                   <tr key={p.player_id ?? i}>

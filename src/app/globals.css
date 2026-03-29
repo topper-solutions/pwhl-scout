@@ -3,13 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --rink-950: #04080f;
-    --rink-900: #0a1628;
-    --rink-800: #132842;
-    --ice: #c8e6f5;
-  }
-
   html {
     color-scheme: dark;
   }
@@ -46,10 +39,6 @@
     white-space: nowrap;
   }
 
-  .stat-table thead th.sortable {
-    @apply cursor-pointer hover:text-ice transition-colors select-none;
-  }
-
   .stat-table tbody td {
     @apply px-3 py-2.5 border-b border-rink-800/30 whitespace-nowrap;
   }
@@ -83,10 +72,6 @@
       px-3 py-1.5 rounded-md hover:bg-rink-800/50;
   }
 
-  .nav-link-active {
-    @apply text-white bg-rink-800/70;
-  }
-
   .page-header {
     @apply mb-8;
   }
@@ -118,8 +103,3 @@
   @apply bg-rink-600;
 }
 
-/* Number columns right-aligned in tables */
-.stat-table th.num,
-.stat-table td.num {
-  @apply text-right;
-}

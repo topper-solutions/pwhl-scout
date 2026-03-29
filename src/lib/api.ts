@@ -106,37 +106,46 @@ async function firebaseFetch(path: string) {
 
 // --- Scorebar ---
 export async function getScorebar(daysBack = 1, daysAhead = 1) {
-  return htFetch(
+  const data = await htFetch(
     `feed=modulekit&view=scorebar&numberofdaysback=${daysBack}&numberofdaysahead=${daysAhead}`
   );
+  const raw = extractSiteKit(data, "Scorebar");
+  return Array.isArray(raw) ? raw : [];
 }
 
 // --- Schedule ---
 export async function getSeasonSchedule(seasonId = CURRENT_SEASON_ID) {
-  return htFetch(`feed=modulekit&view=schedule&season_id=${seasonId}`);
+  const data = await htFetch(`feed=modulekit&view=schedule&season_id=${seasonId}`);
+  const raw = extractSiteKit(data, "Schedule");
+  return Array.isArray(raw) ? raw : [];
 }
 
 export async function getTeamSchedule(
   teamId: number,
   seasonId = CURRENT_SEASON_ID
 ) {
-  return htFetch(
+  const data = await htFetch(
     `feed=statviewfeed&view=schedule&team=${teamId}&season=${seasonId}&month=-1`
   );
+  const raw = extractSiteKit(data, "Schedule");
+  return Array.isArray(raw) ? raw : [];
 }
 
 // --- Standings ---
 export async function getStandings(seasonId = CURRENT_SEASON_ID) {
-  return htFetch(
+  const data = await htFetch(
     `feed=modulekit&view=statviewtype&stat=conference&type=standings&season_id=${seasonId}`
   );
+  const raw = extractSiteKit(data, "Statviewtype");
+  return Array.isArray(raw) ? raw.filter((r: any) => r.team_id) : [];
 }
 
 // --- Game Detail ---
 export async function getGameSummary(gameId: number) {
-  return htFetch(
+  const data = await htFetch(
     `feed=gc&tab=gamesummary&game_id=${gameId}&site_id=0&lang=en`
   );
+  return extractSiteKit(data, "Gamesummary");
 }
 
 export async function getGameClock(gameId: number) {
@@ -144,7 +153,9 @@ export async function getGameClock(gameId: number) {
 }
 
 export async function getPlayByPlay(gameId: number) {
-  return htFetch(`feed=gc&tab=pxpverbose&game_id=${gameId}`);
+  const data = await htFetch(`feed=gc&tab=pxpverbose&game_id=${gameId}`);
+  const raw = extractSiteKit(data, "Pxpverbose");
+  return Array.isArray(raw) ? raw : [];
 }
 
 export async function getGamePreview(gameId: number) {
@@ -153,37 +164,51 @@ export async function getGamePreview(gameId: number) {
 
 // --- Player Stats ---
 export async function getSkaterStats(seasonId = CURRENT_SEASON_ID) {
-  return htFetch(
+  const data = await htFetch(
     `feed=statviewfeed&view=players&season=${seasonId}&team=all&position=skaters&rookies=0&statsType=standard&rosterstatus=undefined&site_id=0&league_id=1&lang=en&division=-1&conference=-1&limit=500&sort=points`
   );
+  const raw = extractSiteKit(data, "Players");
+  return Array.isArray(raw) ? raw : [];
 }
 
 export async function getGoalieStats(seasonId = CURRENT_SEASON_ID) {
-  return htFetch(
+  const data = await htFetch(
     `feed=statviewfeed&view=players&season=${seasonId}&team=all&position=goalies&rookies=0&statsType=standard&rosterstatus=undefined&site_id=0&first=0&limit=500&sort=gaa&league_id=1&lang=en&division=-1&conference=-1&qualified=all`
   );
+  const raw = extractSiteKit(data, "Players");
+  return Array.isArray(raw) ? raw : [];
 }
 
 export async function getTopScorers(seasonId = CURRENT_SEASON_ID) {
-  return htFetch(
+  const data = await htFetch(
     `feed=modulekit&view=statviewtype&type=topscorers&first=0&limit=100&season_id=${seasonId}`
   );
+  const raw = extractSiteKit(data, "Statviewtype");
+  return Array.isArray(raw) ? raw.filter((r: any) => r.player_name || r.name || r.first_name) : [];
 }
 
 // --- Teams ---
 export async function getTeams(seasonId = CURRENT_SEASON_ID) {
-  return htFetch(
+  const data = await htFetch(
     `feed=modulekit&view=teamsbyseason&season_id=${seasonId}`
   );
+  return extractSiteKit(data, "Teamsbyseason");
 }
 
 export async function getTeamRoster(
   teamId: number,
   seasonId = CURRENT_SEASON_ID
 ) {
-  return htFetch(
+  const data = await htFetch(
     `feed=modulekit&view=roster&team_id=${teamId}&season_id=${seasonId}`
   );
+  const raw = extractSiteKit(data, "Roster");
+  if (!Array.isArray(raw)) return [];
+  let roster = raw.filter((p: any) => typeof p === "object" && p !== null && !Array.isArray(p) && p.first_name);
+  if (roster.length > 0 && roster[0]?.sections) {
+    roster = roster[0].sections.flatMap((s: any) => s.data ?? []);
+  }
+  return roster;
 }
 
 // --- Players ---

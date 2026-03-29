@@ -45,7 +45,6 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable}`}
     >
       <body className="font-body min-h-screen flex flex-col">
-        {/* Top bar */}
         <header className="sticky top-0 z-50 border-b border-rink-700/40 bg-rink-950/90 backdrop-blur-xl">
           <div className="mx-auto max-w-7xl px-4 h-14 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5 group">
@@ -78,12 +77,10 @@ export default function RootLayout({
           </div>
         </header>
 
-        {/* Main */}
         <main className="flex-1 mx-auto max-w-7xl w-full px-4 py-8">
           {children}
         </main>
 
-        {/* Footer */}
         <footer className="border-t border-rink-800/40 py-6 mt-auto">
           <div className="mx-auto max-w-7xl px-4 flex items-center justify-between text-xs text-gray-500">
             <span>

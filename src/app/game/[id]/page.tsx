@@ -1,13 +1,11 @@
-import { getGameSummary, getPlayByPlay, extractSiteKit } from "@/lib/api";
+import { getGameSummary, getPlayByPlay } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
+import { val, playerName } from "@/lib/utils";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
 import type { Metadata } from "next";
 
 export const revalidate = 60;
-
-import { val } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -25,16 +23,12 @@ export async function generateMetadata({
 
 function GoalRow({ goal }: { goal: any }) {
   const team = getTeamMeta(goal.team_id ?? goal.team ?? 0);
-  const scorer = goal.goal_scorer;
-  const scorerName = typeof scorer === "object"
-    ? `${scorer?.first_name ?? ""} ${scorer?.last_name ?? ""}`.trim()
-    : scorer ?? "Goal";
-  const assist1 = goal.assist1_player;
-  const assist2 = goal.assist2_player;
-  const assists = [assist1, assist2]
+  const scorerName = typeof goal.goal_scorer === "object"
+    ? playerName(goal.goal_scorer)
+    : goal.goal_scorer ?? "Goal";
+  const assists = [goal.assist1_player, goal.assist2_player]
     .filter((a) => a?.player_id)
-    .map((a) => `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim())
-    .filter(Boolean);
+    .map((a) => playerName(a));
 
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-rink-800/30 last:border-0">
@@ -82,9 +76,8 @@ function GoalRow({ goal }: { goal: any }) {
 
 function PenaltyRow({ pen }: { pen: any }) {
   const team = getTeamMeta(pen.team_id ?? pen.team ?? 0);
-  const penPlayer = pen.player_penalized_info;
-  const playerName = penPlayer
-    ? `${penPlayer.first_name ?? ""} ${penPlayer.last_name ?? ""}`.trim()
+  const penPlayerName = pen.player_penalized_info
+    ? playerName(pen.player_penalized_info)
     : pen.player_penalized_name ?? "Player";
 
   return (
@@ -96,7 +89,7 @@ function PenaltyRow({ pen }: { pen: any }) {
         {team.abbr}
       </div>
       <div className="flex-1">
-        <span className="text-sm text-gray-300">{playerName}</span>
+        <span className="text-sm text-gray-300">{penPlayerName}</span>
         <span className="text-xs text-gray-500 ml-2">
           {pen.minutes_formatted ?? `${pen.minutes ?? 2} min`} —{" "}
           {pen.lang_penalty_description ?? pen.offence ?? "Penalty"}
@@ -118,25 +111,16 @@ export default async function GamePage({
   const gameId = parseInt(id);
   if (isNaN(gameId) || gameId < 1) notFound();
 
-  let summary: any = null;
-  let pbp: any[] = [];
+  const [summaryResult, pbpResult] = await Promise.allSettled([
+    getGameSummary(gameId),
+    getPlayByPlay(gameId),
+  ]);
 
-  try {
-    const data = await getGameSummary(gameId);
-    summary = extractSiteKit(data, "Gamesummary");
-  } catch (error) {
-    console.error(`[GamePage] Failed to fetch game summary for game ${gameId}:`, error);
-    summary = null;
-  }
+  const summary = summaryResult.status === "fulfilled" ? summaryResult.value : null;
+  const pbp = pbpResult.status === "fulfilled" ? pbpResult.value : [];
 
-  try {
-    const data = await getPlayByPlay(gameId);
-    const raw = extractSiteKit(data, "Pxpverbose");
-    pbp = Array.isArray(raw) ? raw : [];
-  } catch (error) {
-    console.error(`[GamePage] Failed to fetch play-by-play for game ${gameId}:`, error);
-    pbp = [];
-  }
+  if (summaryResult.status === "rejected") console.error(`[GamePage] Failed to fetch summary for game ${gameId}:`, summaryResult.reason);
+  if (pbpResult.status === "rejected") console.error(`[GamePage] Failed to fetch PBP for game ${gameId}:`, pbpResult.reason);
 
   if (!summary) {
     return (
@@ -366,8 +350,7 @@ export default async function GamePage({
                       </div>
                       <div>
                         <p className="text-sm font-medium text-white">
-                          {star.name ??
-                            `${star.first_name ?? ""} ${star.last_name ?? ""}`.trim()}
+                          {playerName(star)}
                         </p>
                         <p className="text-[10px] text-gray-500">
                           #{star.jersey_number ?? ""} &middot; {starTeam.city}

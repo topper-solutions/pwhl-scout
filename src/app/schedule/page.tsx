@@ -1,4 +1,4 @@
-import { getSeasonSchedule, extractSiteKit } from "@/lib/api";
+import { getSeasonSchedule, getTeamSchedule } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import { formatDate } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
@@ -21,11 +21,13 @@ export default async function SchedulePage({
   const resolvedParams = await searchParams;
   let games: any[] = [];
 
+  const teamFilter = resolvedParams.team ? parseInt(resolvedParams.team) : null;
+
   let fetchError = false;
   try {
-    const data = await getSeasonSchedule();
-    const raw = extractSiteKit(data, "Schedule");
-    games = Array.isArray(raw) ? raw : [];
+    games = teamFilter
+      ? await getTeamSchedule(teamFilter)
+      : await getSeasonSchedule();
   } catch (error) {
     console.error("[SchedulePage] Failed to fetch schedule:", error);
     fetchError = true;
@@ -39,16 +41,6 @@ export default async function SchedulePage({
         </div>
         <ErrorBanner message="Unable to load schedule." />
       </div>
-    );
-  }
-
-  const teamFilter = resolvedParams.team ? parseInt(resolvedParams.team) : null;
-
-  if (teamFilter) {
-    games = games.filter(
-      (g: any) =>
-        parseInt(g.home_team) === teamFilter ||
-        parseInt(g.visiting_team) === teamFilter
     );
   }
 
