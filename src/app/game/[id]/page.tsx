@@ -1,7 +1,8 @@
 import { getGameSummary, getPlayByPlay } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
-import { val, playerName, isGameLive } from "@/lib/utils";
-import { LiveGameOverlay } from "@/components/live-game-overlay";
+import { val, playerName, isGameLive, isGameFinal } from "@/lib/utils";
+import { getPbpLabel } from "@/lib/pbp-labels";
+import { LiveScoreboard } from "@/components/live-scoreboard";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -22,17 +23,43 @@ export async function generateMetadata({
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const PERIOD_LABELS: Record<string, string> = {
+  "1": "1st",
+  "2": "2nd",
+  "3": "3rd",
+  "4": "OT",
+};
+
+function periodLabel(p: string | number) {
+  return PERIOD_LABELS[String(p)] ?? `P${p}`;
+}
+
 function GoalRow({ goal }: { goal: any }) {
   const team = getTeamMeta(goal.team_id ?? goal.team ?? 0);
-  const scorerName = typeof goal.goal_scorer === "object"
-    ? playerName(goal.goal_scorer)
-    : goal.goal_scorer ?? "Goal";
+  const scorerName =
+    typeof goal.goal_scorer === "object"
+      ? playerName(goal.goal_scorer)
+      : (goal.goal_scorer ?? "Goal");
   const assists = [goal.assist1_player, goal.assist2_player]
     .filter((a) => a?.player_id)
     .map((a) => playerName(a));
 
+  const isPP = goal.power_play === "1";
+  const isSH = goal.short_handed === "1";
+  const isEN = goal.empty_net === "1";
+
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-rink-800/30 last:border-0">
+    <div
+      className={`flex items-start gap-3 py-2.5 border-b border-rink-800/30 last:border-0 rounded ${
+        isPP
+          ? "border-l-2 border-l-amber-500/60 bg-amber-950/10 pl-3"
+          : isSH
+          ? "border-l-2 border-l-cyan-500/60 bg-cyan-950/10 pl-3"
+          : isEN
+          ? "opacity-60"
+          : ""
+      }`}
+    >
       <div
         className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white mt-0.5 shrink-0"
         style={{ backgroundColor: team.color }}
@@ -41,35 +68,29 @@ function GoalRow({ goal }: { goal: any }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="font-semibold text-sm text-white">
-            {scorerName}
-          </span>
-          <span className="text-xs text-gray-500">
-            {goal.time ?? ""}
-          </span>
+          <span className="font-semibold text-sm text-white">{scorerName}</span>
+          <span className="text-xs text-gray-500">{goal.time ?? ""}</span>
+          {isPP && (
+            <span className="text-[10px] font-bold text-amber-400 bg-amber-900/30 px-1.5 py-0.5 rounded">
+              PP
+            </span>
+          )}
+          {isSH && (
+            <span className="text-[10px] font-bold text-cyan-400 bg-cyan-900/30 px-1.5 py-0.5 rounded">
+              SH
+            </span>
+          )}
+          {isEN && (
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-800/50 px-1.5 py-0.5 rounded">
+              EN
+            </span>
+          )}
         </div>
         {assists.length > 0 && (
           <p className="text-xs text-gray-400 mt-0.5">
             Assists: {assists.join(", ")}
           </p>
         )}
-        <div className="flex gap-2 mt-0.5">
-          {goal.power_play === "1" && (
-            <span className="text-[10px] font-bold text-amber-400 uppercase">
-              PP
-            </span>
-          )}
-          {goal.short_handed === "1" && (
-            <span className="text-[10px] font-bold text-cyan-400 uppercase">
-              SH
-            </span>
-          )}
-          {goal.empty_net === "1" && (
-            <span className="text-[10px] font-bold text-gray-400 uppercase">
-              EN
-            </span>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -77,9 +98,9 @@ function GoalRow({ goal }: { goal: any }) {
 
 function PenaltyRow({ pen }: { pen: any }) {
   const team = getTeamMeta(pen.team_id ?? pen.team ?? 0);
-  const penPlayerName = pen.player_penalized_info
+  const penName = pen.player_penalized_info
     ? playerName(pen.player_penalized_info)
-    : pen.player_penalized_name ?? "Player";
+    : (pen.player_penalized_name ?? "Player");
 
   return (
     <div className="flex items-start gap-3 py-2 border-b border-rink-800/30 last:border-0">
@@ -90,7 +111,7 @@ function PenaltyRow({ pen }: { pen: any }) {
         {team.abbr}
       </div>
       <div className="flex-1">
-        <span className="text-sm text-gray-300">{penPlayerName}</span>
+        <span className="text-sm text-gray-300">{penName}</span>
         <span className="text-xs text-gray-500 ml-2">
           {pen.minutes_formatted ?? `${pen.minutes ?? 2} min`} —{" "}
           {pen.lang_penalty_description ?? pen.offence ?? "Penalty"}
@@ -100,6 +121,72 @@ function PenaltyRow({ pen }: { pen: any }) {
         </span>
       </div>
     </div>
+  );
+}
+
+function Linescore({
+  goals,
+  awayTeam,
+  homeTeam,
+  awayScore,
+  homeScore,
+}: {
+  goals: any[];
+  awayTeam: any;
+  homeTeam: any;
+  awayScore: number | string;
+  homeScore: number | string;
+}) {
+  const periods = ["1", "2", "3"];
+  const hasOT = goals.some(
+    (g) => String(g.period_id ?? g.period) === "4"
+  );
+  if (hasOT) periods.push("OT");
+
+  const awayByPeriod: Record<string, number> = {};
+  const homeByPeriod: Record<string, number> = {};
+  for (const g of goals) {
+    const p = String(g.period_id ?? g.period ?? "1");
+    const key = p === "4" ? "OT" : p;
+    const isHome = String(g.home) === "1" || String(g.team_id) === String(homeTeam.id);
+    if (isHome) homeByPeriod[key] = (homeByPeriod[key] ?? 0) + 1;
+    else awayByPeriod[key] = (awayByPeriod[key] ?? 0) + 1;
+  }
+
+  return (
+    <table className="w-full text-xs mt-4">
+      <thead>
+        <tr className="text-gray-500">
+          <th className="text-left w-16 py-1"></th>
+          {periods.map((p) => (
+            <th key={p} className="text-center w-8 py-1">
+              {periodLabel(p === "OT" ? "4" : p)}
+            </th>
+          ))}
+          <th className="text-center w-8 py-1 font-bold text-gray-400">T</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr className="border-t border-rink-800/30">
+          <td className="py-1.5 font-bold text-gray-300">{awayTeam.abbr}</td>
+          {periods.map((p) => (
+            <td key={p} className="text-center text-gray-400 font-mono">
+              {awayByPeriod[p] ?? 0}
+            </td>
+          ))}
+          <td className="text-center font-bold text-white font-mono">{awayScore}</td>
+        </tr>
+        <tr className="border-t border-rink-800/30">
+          <td className="py-1.5 font-bold text-gray-300">{homeTeam.abbr}</td>
+          {periods.map((p) => (
+            <td key={p} className="text-center text-gray-400 font-mono">
+              {homeByPeriod[p] ?? 0}
+            </td>
+          ))}
+          <td className="text-center font-bold text-white font-mono">{homeScore}</td>
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
@@ -117,11 +204,14 @@ export default async function GamePage({
     getPlayByPlay(gameId),
   ]);
 
-  const summary = summaryResult.status === "fulfilled" ? summaryResult.value : null;
+  const summary =
+    summaryResult.status === "fulfilled" ? summaryResult.value : null;
   const pbp = pbpResult.status === "fulfilled" ? pbpResult.value : [];
 
-  if (summaryResult.status === "rejected") console.error(`[GamePage] Failed to fetch summary for game ${gameId}:`, summaryResult.reason);
-  if (pbpResult.status === "rejected") console.error(`[GamePage] Failed to fetch PBP for game ${gameId}:`, pbpResult.reason);
+  if (summaryResult.status === "rejected")
+    console.error(`[GamePage] Failed to fetch summary for game ${gameId}:`, summaryResult.reason);
+  if (pbpResult.status === "rejected")
+    console.error(`[GamePage] Failed to fetch PBP for game ${gameId}:`, pbpResult.reason);
 
   if (!summary) {
     return (
@@ -145,35 +235,33 @@ export default async function GamePage({
   const awayTeam = getTeamMeta(
     summary.visitor?.team_id ?? summary.visitor?.id ?? summary.visiting_team ?? 0
   );
-  const homeScore =
-    summary.totalGoals?.home ?? summary.home_goal_count ?? "0";
-  const awayScore =
-    summary.totalGoals?.visitor ?? summary.visiting_goal_count ?? "0";
+  const homeScore = summary.totalGoals?.home ?? summary.home_goal_count ?? "0";
+  const awayScore = summary.totalGoals?.visitor ?? summary.visiting_goal_count ?? "0";
   const status = summary.status_value ?? summary.game_status ?? "Final";
   const gameDate = summary.game_date ?? "";
   const venue = summary.venue ?? "";
+  const live = isGameLive(status);
+  const final_ = isGameFinal(status);
 
   const goals: any[] = summary.goals ?? [];
   const penalties: any[] = summary.penalties ?? [];
   const threeStars: any[] = (summary.mvps ?? summary.three_stars ?? []).filter(Boolean);
 
-  // Group goals by period
   const goalsByPeriod: Record<string, any[]> = {};
   for (const g of goals) {
     const period = g.period_id ?? g.period ?? "1";
     const label =
-      period === "1"
-        ? "1st Period"
-        : period === "2"
-        ? "2nd Period"
-        : period === "3"
-        ? "3rd Period"
-        : period === "4"
-        ? "Overtime"
+      period === "1" ? "1st Period"
+        : period === "2" ? "2nd Period"
+        : period === "3" ? "3rd Period"
+        : period === "4" ? "Overtime"
         : `Period ${period}`;
     if (!goalsByPeriod[label]) goalsByPeriod[label] = [];
     goalsByPeriod[label].push(g);
   }
+
+  const starColors = ["text-amber-400", "text-gray-300", "text-orange-700"];
+  const starSizes = ["text-lg", "text-base", "text-sm"];
 
   return (
     <div className="animate-fade-in">
@@ -184,83 +272,139 @@ export default async function GamePage({
         &larr; Back to scores
       </Link>
 
-      {/* Scoreboard header */}
-      <div className="glass-card overflow-hidden mb-6">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider">
-              {gameDate}
-            </span>
-            <span
-              className={`text-xs font-bold uppercase ${
-                status?.toLowerCase()?.includes("progress")
-                  ? "text-live"
-                  : "text-gray-400"
-              }`}
-            >
-              {status}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center gap-8 py-6">
-            {/* Away */}
-            <div className="flex flex-col items-center gap-3">
-              <Link href={`/team/${awayTeam.id}`}>
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-xl"
-                  style={{ backgroundColor: awayTeam.color }}
-                >
-                  {awayTeam.abbr}
-                </div>
-              </Link>
-              <span className="text-sm font-medium text-gray-300">
-                {summary.visitor?.name ?? `${awayTeam.city} ${awayTeam.name}`}
-              </span>
-            </div>
-
-            {/* Score */}
-            <div className="flex items-center gap-4">
-              <span className="font-mono text-5xl font-black text-white tabular-nums">
-                {awayScore}
-              </span>
-              <span className="text-2xl text-gray-600 font-light">–</span>
-              <span className="font-mono text-5xl font-black text-white tabular-nums">
-                {homeScore}
-              </span>
-            </div>
-
-            {/* Home */}
-            <div className="flex flex-col items-center gap-3">
-              <Link href={`/team/${homeTeam.id}`}>
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-xl"
-                  style={{ backgroundColor: homeTeam.color }}
-                >
-                  {homeTeam.abbr}
-                </div>
-              </Link>
-              <span className="text-sm font-medium text-gray-300">
-                {summary.home?.name ?? `${homeTeam.city} ${homeTeam.name}`}
-              </span>
-            </div>
-          </div>
-
-          {venue && (
-            <p className="text-center text-xs text-gray-500">{venue}</p>
-          )}
-        </div>
-      </div>
-
-      <LiveGameOverlay
+      <LiveScoreboard
         gameId={gameId}
         homeTeamId={String(summary.home?.team_id ?? summary.home?.id ?? 0)}
         visitorTeamId={String(summary.visitor?.team_id ?? summary.visitor?.id ?? 0)}
-        isLive={isGameLive(status)}
+        isLive={live}
+        initialHomeScore={homeScore}
+        initialAwayScore={awayScore}
+        status={status}
+        gameDate={gameDate}
+        venue={venue}
+        homeName={summary.home?.name ?? `${homeTeam.city} ${homeTeam.name}`}
+        visitorName={summary.visitor?.name ?? `${awayTeam.city} ${awayTeam.name}`}
       />
 
+      {/* Linescore */}
+      {goals.length > 0 && (
+        <div className="glass-card overflow-hidden mb-6 px-5 py-3">
+          <Linescore
+            goals={goals}
+            awayTeam={awayTeam}
+            homeTeam={homeTeam}
+            awayScore={awayScore}
+            homeScore={homeScore}
+          />
+        </div>
+      )}
+
+      {/* Content grid — layout differs for live vs completed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Scoring summary */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* On mobile: three stars + shots first (before long content), on desktop: sidebar */}
+        <div className="order-1 lg:order-2 space-y-4">
+          {threeStars.length > 0 && (
+            <div className="glass-card overflow-hidden">
+              <div className="px-5 py-3 border-b border-rink-700/30">
+                <h2 className="section-title text-base">Three Stars</h2>
+              </div>
+              <div className="p-4 space-y-3">
+                {threeStars.map((star: any, i: number) => {
+                  const starTeam =
+                    star.home === 1 || star.home === "1" ? homeTeam : awayTeam;
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span
+                        className={`${starSizes[i] ?? "text-sm"} font-display font-bold ${starColors[i] ?? "text-gray-500"} w-8 shrink-0 text-center`}
+                      >
+                        {"★".repeat(i + 1)}
+                      </span>
+                      <div
+                        className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
+                        style={{ backgroundColor: starTeam.color }}
+                      >
+                        {starTeam.abbr}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {playerName(star)}
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          #{star.jersey_number ?? ""} &middot; {starTeam.city}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {(summary.shotsByPeriod || summary.totalShots) && (
+            <div className="glass-card overflow-hidden">
+              <div className="px-5 py-3 border-b border-rink-700/30">
+                <h2 className="section-title text-base">Shots on Goal</h2>
+              </div>
+              <div className="p-4">
+                <table className="stat-table">
+                  <thead>
+                    <tr>
+                      <th>Team</th>
+                      {summary.shotsByPeriod &&
+                        Object.keys(
+                          typeof summary.shotsByPeriod === "object"
+                            ? summary.shotsByPeriod
+                            : {}
+                        ).map((p) => (
+                          <th key={p} className="num text-xs">
+                            {periodLabel(p)}
+                          </th>
+                        ))}
+                      <th className="num">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="text-sm font-medium">{awayTeam.abbr}</td>
+                      {summary.shotsByPeriod &&
+                        Object.entries(
+                          typeof summary.shotsByPeriod === "object"
+                            ? summary.shotsByPeriod
+                            : {}
+                        ).map(([p, shots]: [string, any]) => (
+                          <td key={p} className="num text-sm">
+                            {shots?.visitor ?? "—"}
+                          </td>
+                        ))}
+                      <td className="num font-bold">
+                        {summary.totalShots?.visitor ?? "—"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="text-sm font-medium">{homeTeam.abbr}</td>
+                      {summary.shotsByPeriod &&
+                        Object.entries(
+                          typeof summary.shotsByPeriod === "object"
+                            ? summary.shotsByPeriod
+                            : {}
+                        ).map(([p, shots]: [string, any]) => (
+                          <td key={p} className="num text-sm">
+                            {shots?.home ?? "—"}
+                          </td>
+                        ))}
+                      <td className="num font-bold">
+                        {summary.totalShots?.home ?? "—"}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Main content */}
+        <div className="order-2 lg:order-1 lg:col-span-2 space-y-4">
           <div className="glass-card overflow-hidden">
             <div className="px-5 py-3 border-b border-rink-700/30">
               <h2 className="section-title text-base">Scoring Summary</h2>
@@ -285,7 +429,6 @@ export default async function GamePage({
             </div>
           </div>
 
-          {/* Penalties */}
           {penalties.length > 0 && (
             <div className="glass-card overflow-hidden">
               <div className="px-5 py-3 border-b border-rink-700/30">
@@ -299,112 +442,36 @@ export default async function GamePage({
             </div>
           )}
 
-          {/* Play-by-play */}
+          {/* Play-by-play — collapsible on mobile via details/summary */}
           {pbp.length > 0 && (
             <div className="glass-card overflow-hidden">
-              <div className="px-5 py-3 border-b border-rink-700/30">
-                <h2 className="section-title text-base">Play-by-Play</h2>
-              </div>
-              <div className="p-4 max-h-96 overflow-y-auto space-y-1">
-                {pbp.slice(0, 100).map((event: any, i: number) => (
-                  <div
-                    key={i}
-                    className="flex gap-3 py-1 text-xs border-b border-rink-800/20 last:border-0"
-                  >
-                    <span className="text-gray-600 font-mono w-12 shrink-0">
-                      {val(event, "time_formatted", "time", "s")}
-                    </span>
-                    <span className="text-gray-400">
-                      {val(
-                        event,
-                        "event",
-                        "description",
-                        "details",
-                        "event_type"
-                      )}
+              <details className="lg:open" open={final_ ? undefined : true}>
+                <summary className="px-5 py-3 border-b border-rink-700/30 cursor-pointer hover:bg-rink-800/20 transition-colors list-none">
+                  <div className="flex items-center justify-between">
+                    <h2 className="section-title text-base">Play-by-Play</h2>
+                    <span className="text-[10px] text-gray-500 lg:hidden">
+                      Tap to expand
                     </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-4">
-          {/* Three Stars */}
-          {threeStars.length > 0 && (
-            <div className="glass-card overflow-hidden">
-              <div className="px-5 py-3 border-b border-rink-700/30">
-                <h2 className="section-title text-base">Three Stars</h2>
-              </div>
-              <div className="p-4 space-y-3">
-                {threeStars.map((star: any, i: number) => {
-                  // mvps have home=0/1 to indicate visitor/home team
-                  const starTeam = star.home === 1 || star.home === "1"
-                    ? homeTeam
-                    : awayTeam;
-                  const starLabel = i === 0 ? "\u2605" : i === 1 ? "\u2605\u2605" : "\u2605\u2605\u2605";
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="text-sm font-display font-bold text-ice-dim w-10 shrink-0">
-                        {starLabel}
-                      </span>
+                </summary>
+                <div className="p-4 max-h-96 overflow-y-auto space-y-0.5">
+                  {pbp.slice(0, 100).map((event: any, i: number) => {
+                    const eventType = val(event, "event", "event_type");
+                    const { label, color } = getPbpLabel(eventType);
+                    return (
                       <div
-                        className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
-                        style={{ backgroundColor: starTeam.color }}
+                        key={i}
+                        className="flex gap-3 py-1 text-xs border-b border-rink-800/20 last:border-0"
                       >
-                        {starTeam.abbr}
+                        <span className="text-gray-600 font-mono w-12 shrink-0">
+                          {val(event, "time_formatted", "time", "s")}
+                        </span>
+                        <span className={`${color} capitalize`}>{label}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {playerName(star)}
-                        </p>
-                        <p className="text-[10px] text-gray-500">
-                          #{star.jersey_number ?? ""} &middot; {starTeam.city}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Shot totals */}
-          {(summary.shotsByPeriod || summary.shots) && (
-            <div className="glass-card overflow-hidden">
-              <div className="px-5 py-3 border-b border-rink-700/30">
-                <h2 className="section-title text-base">Shots on Goal</h2>
-              </div>
-              <div className="p-4">
-                <table className="stat-table">
-                  <thead>
-                    <tr>
-                      <th>Team</th>
-                      <th className="num">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="text-sm font-medium">{awayTeam.abbr}</td>
-                      <td className="num font-bold">
-                        {summary.totalShots?.visitor ??
-                          summary.visiting_shots ??
-                          "—"}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="text-sm font-medium">{homeTeam.abbr}</td>
-                      <td className="num font-bold">
-                        {summary.totalShots?.home ??
-                          summary.home_shots ??
-                          "—"}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                    );
+                  })}
+                </div>
+              </details>
             </div>
           )}
         </div>
