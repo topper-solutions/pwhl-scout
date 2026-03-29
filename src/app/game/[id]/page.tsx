@@ -170,7 +170,7 @@ export default async function GamePage({
 
   const goals: any[] = summary.goals ?? [];
   const penalties: any[] = summary.penalties ?? [];
-  const threeStars: any[] = summary.mvps ?? summary.three_stars ?? [];
+  const threeStars: any[] = (summary.mvps ?? summary.three_stars ?? []).filter(Boolean);
 
   // Group goals by period
   const goalsByPeriod: Record<string, any[]> = {};
