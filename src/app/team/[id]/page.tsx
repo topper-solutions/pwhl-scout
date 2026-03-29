@@ -12,9 +12,10 @@ import { formatDate } from "@/lib/utils";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const team = getTeamMeta(parseInt(params.id));
+  const { id } = await params;
+  const team = getTeamMeta(parseInt(id));
   return {
     title: `${team.city} ${team.name} | PWHL Scout`,
     description: `Roster, schedule, and stats for the ${team.city} ${team.name}.`,
@@ -26,10 +27,11 @@ export async function generateMetadata({
 export default async function TeamPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const teamId = parseInt(params.id);
-  if (isNaN(teamId)) notFound();
+  const { id } = await params;
+  const teamId = parseInt(id);
+  if (isNaN(teamId) || teamId < 1) notFound();
   const team = getTeamMeta(teamId);
 
   let roster: any[] = [];
@@ -39,11 +41,11 @@ export default async function TeamPage({
     const data = await getTeamRoster(teamId);
     const raw = extractSiteKit(data, "Roster");
     roster = Array.isArray(raw) ? raw.filter((p: any) => typeof p === "object" && p !== null && !Array.isArray(p) && p.first_name) : [];
-    // Flatten position groups if needed
     if (roster.length > 0 && roster[0]?.sections) {
       roster = roster[0].sections.flatMap((s: any) => s.data ?? []);
     }
-  } catch {
+  } catch (error) {
+    console.error(`[TeamPage] Failed to fetch roster for team ${teamId}:`, error);
     roster = [];
   }
 
@@ -51,7 +53,8 @@ export default async function TeamPage({
     const data = await getTeamSchedule(teamId);
     const raw = extractSiteKit(data, "Schedule");
     schedule = Array.isArray(raw) ? raw : [];
-  } catch {
+  } catch (error) {
+    console.error(`[TeamPage] Failed to fetch schedule for team ${teamId}:`, error);
     schedule = [];
   }
 

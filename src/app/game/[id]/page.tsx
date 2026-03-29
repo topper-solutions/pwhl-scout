@@ -12,11 +12,12 @@ import { val } from "@/lib/utils";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const { id } = await params;
   return {
-    title: `Game #${params.id} | PWHL Scout`,
-    description: `PWHL game details and box score for game ${params.id}.`,
+    title: `Game #${id} | PWHL Scout`,
+    description: `PWHL game details and box score for game ${id}.`,
   };
 }
 
@@ -111,10 +112,11 @@ function PenaltyRow({ pen }: { pen: any }) {
 export default async function GamePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const gameId = parseInt(params.id);
-  if (isNaN(gameId)) notFound();
+  const { id } = await params;
+  const gameId = parseInt(id);
+  if (isNaN(gameId) || gameId < 1) notFound();
 
   let summary: any = null;
   let pbp: any[] = [];
@@ -122,7 +124,8 @@ export default async function GamePage({
   try {
     const data = await getGameSummary(gameId);
     summary = extractSiteKit(data, "Gamesummary");
-  } catch {
+  } catch (error) {
+    console.error(`[GamePage] Failed to fetch game summary for game ${gameId}:`, error);
     summary = null;
   }
 
@@ -130,7 +133,8 @@ export default async function GamePage({
     const data = await getPlayByPlay(gameId);
     const raw = extractSiteKit(data, "Pxpverbose");
     pbp = Array.isArray(raw) ? raw : [];
-  } catch {
+  } catch (error) {
+    console.error(`[GamePage] Failed to fetch play-by-play for game ${gameId}:`, error);
     pbp = [];
   }
 

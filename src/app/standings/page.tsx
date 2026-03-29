@@ -1,5 +1,6 @@
 import { getStandings, extractSiteKit } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
+import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
 
 export const revalidate = 120;
@@ -13,6 +14,7 @@ export const metadata = {
 
 export default async function StandingsPage() {
   let standings: any[] = [];
+  let fetchError = false;
 
   try {
     const data = await getStandings();
@@ -20,8 +22,20 @@ export default async function StandingsPage() {
     standings = Array.isArray(raw)
       ? raw.filter((r: any) => r.team_id)
       : [];
-  } catch {
-    standings = [];
+  } catch (error) {
+    console.error("[StandingsPage] Failed to fetch standings:", error);
+    fetchError = true;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="animate-fade-in">
+        <div className="page-header">
+          <h1 className="page-title">Standings</h1>
+        </div>
+        <ErrorBanner message="Unable to load standings." />
+      </div>
+    );
   }
 
   const columns = [
