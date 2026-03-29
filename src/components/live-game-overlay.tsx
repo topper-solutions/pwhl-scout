@@ -5,6 +5,16 @@ import { getTeamMeta } from "@/lib/teams";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+interface LivePenalty {
+  playerName: string;
+  jerseyNumber: number;
+  offence: string;
+  minutes: number;
+  period: number;
+  time: string;
+  isHome: boolean;
+}
+
 interface LiveState {
   clock: string | null;
   period: string | null;
@@ -12,6 +22,8 @@ interface LiveState {
   visitorGoals: number;
   homeShots: number;
   visitorShots: number;
+  homePenalties: LivePenalty[];
+  visitorPenalties: LivePenalty[];
   connected: boolean;
 }
 
@@ -26,6 +38,8 @@ function extractGameData(
   let visitorGoals = 0;
   let homeShots = 0;
   let visitorShots = 0;
+  const homePenalties: LivePenalty[] = [];
+  const visitorPenalties: LivePenalty[] = [];
 
   // Clock: {games: {"302": {Clock: {Minutes, Seconds, period}}}}
   const clockGames = data?.runningclock?.games ?? data?.runningclock;
@@ -69,7 +83,35 @@ function extractGameData(
     }
   }
 
-  return { clock, period, homeGoals, visitorGoals, homeShots, visitorShots };
+  // Penalties: [null, {games: {"302": {GamePenalties: {...}}}}]
+  const pensRoot = Array.isArray(data?.penalties)
+    ? data.penalties.find((p: any) => p?.games)
+    : data?.penalties;
+  const gamePenalties = pensRoot?.games?.[gameKey]?.GamePenalties;
+  if (gamePenalties && typeof gamePenalties === "object") {
+    const currentPeriod = parseInt(period ?? "0");
+    for (const pen of Object.values(gamePenalties) as any[]) {
+      // Show penalties from current period or previous period (could still be active)
+      if (pen.Period >= currentPeriod - 1) {
+        const entry: LivePenalty = {
+          playerName: `${pen.PenalizedPlayerFirstName ?? ""} ${pen.PenalizedPlayerLastName ?? ""}`.trim(),
+          jerseyNumber: pen.PenalizedPlayerJerseyNumber ?? 0,
+          offence: pen.OffenceDescription ?? "Penalty",
+          minutes: pen.Minutes ?? 2,
+          period: pen.Period ?? 0,
+          time: pen.Time ?? "",
+          isHome: !!pen.Home,
+        };
+        if (entry.isHome) homePenalties.push(entry);
+        else visitorPenalties.push(entry);
+      }
+    }
+  }
+
+  return {
+    clock, period, homeGoals, visitorGoals, homeShots, visitorShots,
+    homePenalties, visitorPenalties,
+  };
 }
 
 export function LiveGameOverlay({
@@ -90,6 +132,8 @@ export function LiveGameOverlay({
     visitorGoals: 0,
     homeShots: 0,
     visitorShots: 0,
+    homePenalties: [],
+    visitorPenalties: [],
     connected: false,
   });
 
@@ -190,31 +234,77 @@ export function LiveGameOverlay({
         </span>
       </div>
 
-      <div className="px-4 py-3 flex items-center justify-center gap-6">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
-            style={{ backgroundColor: visitorTeam.color }}
-          >
-            {visitorTeam.abbr}
+      <div className="px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+        {/* Visitor side */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
+              style={{ backgroundColor: visitorTeam.color }}
+            >
+              {visitorTeam.abbr}
+            </div>
+            <span className="font-mono text-2xl font-bold text-white tabular-nums">
+              {live.visitorGoals}
+            </span>
           </div>
-          <span className="font-mono text-2xl font-bold text-white tabular-nums">
-            {live.visitorGoals}
-          </span>
+          {live.visitorPenalties.length > 0 && (
+            <div className="w-full space-y-1">
+              {live.visitorPenalties.map((pen, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 rounded bg-amber-900/20 border border-amber-800/30 px-2 py-1"
+                >
+                  <span className="text-[10px] font-bold text-amber-400 uppercase shrink-0">
+                    PEN
+                  </span>
+                  <span className="text-[10px] text-gray-300 truncate">
+                    #{pen.jerseyNumber} {pen.playerName}
+                  </span>
+                  <span className="text-[10px] text-gray-500 shrink-0">
+                    {pen.minutes}min
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <span className="text-gray-600 text-sm">&mdash;</span>
+        <span className="text-gray-600 text-sm mt-1.5">&mdash;</span>
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-2xl font-bold text-white tabular-nums">
-            {live.homeGoals}
-          </span>
-          <div
-            className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
-            style={{ backgroundColor: homeTeam.color }}
-          >
-            {homeTeam.abbr}
+        {/* Home side */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-2xl font-bold text-white tabular-nums">
+              {live.homeGoals}
+            </span>
+            <div
+              className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
+              style={{ backgroundColor: homeTeam.color }}
+            >
+              {homeTeam.abbr}
+            </div>
           </div>
+          {live.homePenalties.length > 0 && (
+            <div className="w-full space-y-1">
+              {live.homePenalties.map((pen, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 rounded bg-amber-900/20 border border-amber-800/30 px-2 py-1"
+                >
+                  <span className="text-[10px] font-bold text-amber-400 uppercase shrink-0">
+                    PEN
+                  </span>
+                  <span className="text-[10px] text-gray-300 truncate">
+                    #{pen.jerseyNumber} {pen.playerName}
+                  </span>
+                  <span className="text-[10px] text-gray-500 shrink-0">
+                    {pen.minutes}min
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
