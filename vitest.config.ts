@@ -18,5 +18,11 @@ export default defineConfig({
     typecheck: {
       tsconfig: "./tsconfig.test.json",
     },
+    env: {
+      HOCKEYTECH_API_KEY: "test-key",
+      HOCKEYTECH_CLIENT_CODE: "pwhl",
+      FIREBASE_AUTH_TOKEN: "test-firebase-auth",
+      FIREBASE_API_KEY: "test-firebase-key",
+    },
   },
 });
