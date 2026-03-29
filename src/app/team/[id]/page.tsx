@@ -1,5 +1,6 @@
 import { getTeamRoster, getTeamSchedule } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
+import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -135,12 +136,7 @@ export default async function TeamPage({
           }}
         />
         <div className="p-6 flex items-center gap-5">
-          <div
-            className="w-20 h-20 rounded-xl flex items-center justify-center text-2xl font-black text-white shadow-xl"
-            style={{ backgroundColor: team.color }}
-          >
-            {team.abbr}
-          </div>
+          <TeamLogo team={team} size="xl" className="shadow-xl" />
           <div>
             <h1 className="text-3xl font-display font-black text-white">
               {team.city} {team.name}
@@ -235,12 +231,7 @@ export default async function TeamPage({
                       <span className="text-[10px] text-gray-600 w-6">
                         {isHome ? "vs" : "@"}
                       </span>
-                      <div
-                        className="w-5 h-5 rounded flex items-center justify-center text-[7px] font-black text-white"
-                        style={{ backgroundColor: opponent.color }}
-                      >
-                        {opponent.abbr}
-                      </div>
+                      <TeamLogo team={opponent} size="xs" />
                       <span className="text-xs text-gray-300">
                         {opponent.city}
                       </span>

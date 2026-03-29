@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getTeamMeta, type TeamMeta } from "@/lib/teams";
+import Image from "next/image";
 import Link from "next/link";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -222,9 +223,11 @@ export function LiveScoreboard({
         <div className="flex items-center justify-center gap-6 sm:gap-8 py-4">
           <div className="flex flex-col items-center gap-2">
             <Link href={`/team/${awayTeam.id}`}>
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-base sm:text-lg font-black text-white shadow-xl" style={{ backgroundColor: awayTeam.color }}>
-                {awayTeam.abbr}
-              </div>
+              {awayTeam.logo ? (
+                <Image src={awayTeam.logo} alt={`${awayTeam.city} ${awayTeam.name}`} width={64} height={64} className="rounded-xl object-contain" />
+              ) : (
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-base sm:text-lg font-black text-white shadow-xl" style={{ backgroundColor: awayTeam.color }}>{awayTeam.abbr}</div>
+              )}
             </Link>
             <span className="text-xs sm:text-sm font-medium text-gray-300">{visitorName}</span>
             {live.connected && <PenBadges penalties={live.visitorPenalties} />}
@@ -238,9 +241,11 @@ export function LiveScoreboard({
 
           <div className="flex flex-col items-center gap-2">
             <Link href={`/team/${homeTeam.id}`}>
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-base sm:text-lg font-black text-white shadow-xl" style={{ backgroundColor: homeTeam.color }}>
-                {homeTeam.abbr}
-              </div>
+              {homeTeam.logo ? (
+                <Image src={homeTeam.logo} alt={`${homeTeam.city} ${homeTeam.name}`} width={64} height={64} className="rounded-xl object-contain" />
+              ) : (
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-base sm:text-lg font-black text-white shadow-xl" style={{ backgroundColor: homeTeam.color }}>{homeTeam.abbr}</div>
+              )}
             </Link>
             <span className="text-xs sm:text-sm font-medium text-gray-300">{homeName}</span>
             {live.connected && <PenBadges penalties={live.homePenalties} />}

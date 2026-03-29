@@ -3,6 +3,7 @@ import { getTeamMeta } from "@/lib/teams";
 import { val, playerName, isGameLive, isGameFinal } from "@/lib/utils";
 import { getPbpLabel } from "@/lib/pbp-labels";
 import { LiveScoreboard } from "@/components/live-scoreboard";
+import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -60,12 +61,7 @@ function GoalRow({ goal }: { goal: any }) {
           : ""
       }`}
     >
-      <div
-        className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white mt-0.5 shrink-0"
-        style={{ backgroundColor: team.color }}
-      >
-        {team.abbr}
-      </div>
+      <TeamLogo team={team} size="sm" className="mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-semibold text-sm text-white">{scorerName}</span>
@@ -104,12 +100,7 @@ function PenaltyRow({ pen }: { pen: any }) {
 
   return (
     <div className="flex items-start gap-3 py-2 border-b border-rink-800/30 last:border-0">
-      <div
-        className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white mt-0.5 shrink-0"
-        style={{ backgroundColor: team.color }}
-      >
-        {team.abbr}
-      </div>
+      <TeamLogo team={team} size="sm" className="mt-0.5 shrink-0" />
       <div className="flex-1">
         <span className="text-sm text-gray-300">{penName}</span>
         <span className="text-xs text-gray-500 ml-2">
@@ -319,12 +310,7 @@ export default async function GamePage({
                       >
                         {"★".repeat(i + 1)}
                       </span>
-                      <div
-                        className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
-                        style={{ backgroundColor: starTeam.color }}
-                      >
-                        {starTeam.abbr}
-                      </div>
+                      <TeamLogo team={starTeam} size="sm" />
                       <div>
                         <p className="text-sm font-medium text-white">
                           {playerName(star)}

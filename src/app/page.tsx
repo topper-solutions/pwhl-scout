@@ -2,6 +2,7 @@ import { getScorebar, getStandings, getTopScorers } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import { playerName, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
 export const revalidate = 60;
@@ -65,12 +66,7 @@ function ScoreCard({ game }: { game: any }) {
 
         <div className="flex items-center justify-between py-1.5">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-black text-white shadow-md"
-              style={{ backgroundColor: awayTeam.color }}
-            >
-              {awayTeam.abbr}
-            </div>
+            <TeamLogo team={awayTeam} size="md" />
             <span className="font-semibold text-sm text-gray-200">
               {game.VisitorLongName ?? `${awayTeam.city} ${awayTeam.name}`}
             </span>
@@ -85,12 +81,7 @@ function ScoreCard({ game }: { game: any }) {
 
         <div className="flex items-center justify-between py-1.5">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-black text-white shadow-md"
-              style={{ backgroundColor: homeTeam.color }}
-            >
-              {homeTeam.abbr}
-            </div>
+            <TeamLogo team={homeTeam} size="md" />
             <span className="font-semibold text-sm text-gray-200">
               {game.HomeLongName ?? `${homeTeam.city} ${homeTeam.name}`}
             </span>
