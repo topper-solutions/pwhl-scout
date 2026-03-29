@@ -1,24 +1,27 @@
 import { getTeamRoster, getTeamSchedule, extractSiteKit } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import type { Metadata } from "next";
 
 export const revalidate = 300;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { formatDate } from "@/lib/utils";
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const team = getTeamMeta(parseInt(params.id));
+  return {
+    title: `${team.city} ${team.name} | PWHL Scout`,
+    description: `Roster, schedule, and stats for the ${team.city} ${team.name}.`,
+  };
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default async function TeamPage({
   params,
@@ -26,6 +29,7 @@ export default async function TeamPage({
   params: { id: string };
 }) {
   const teamId = parseInt(params.id);
+  if (isNaN(teamId)) notFound();
   const team = getTeamMeta(teamId);
 
   let roster: any[] = [];
@@ -253,7 +257,7 @@ export default async function TeamPage({
                       <span className="text-xs font-mono text-gray-400">
                         {isHome
                           ? `${g.visiting_goal_count ?? 0}–${g.home_goal_count ?? 0}`
-                          : `${g.visiting_goal_count ?? 0}–${g.home_goal_count ?? 0}`}
+                          : `${g.home_goal_count ?? 0}–${g.visiting_goal_count ?? 0}`}
                       </span>
                     )}
                   </Link>

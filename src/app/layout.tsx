@@ -56,6 +56,7 @@ export default function RootLayout({
                   className="w-5 h-5 text-white"
                   stroke="currentColor"
                   strokeWidth={2}
+                  aria-hidden="true"
                 >
                   <circle cx="12" cy="12" r="10" />
                   <circle cx="12" cy="12" r="3" />
@@ -67,7 +68,7 @@ export default function RootLayout({
               </span>
             </Link>
 
-            <nav className="flex items-center gap-1">
+            <nav aria-label="Main navigation" className="flex items-center gap-1">
               {NAV_LINKS.map((link) => (
                 <Link key={link.href} href={link.href} className="nav-link">
                   {link.label}

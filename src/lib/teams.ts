@@ -5,7 +5,6 @@ export interface TeamMeta {
   city: string;
   color: string;
   colorAlt: string;
-  logo: string;
 }
 
 export const TEAMS: Record<number, TeamMeta> = {
@@ -16,7 +15,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Boston",
     color: "#154734",
     colorAlt: "#C5B783",
-    logo: "https://assets.leaguestat.com/pwhl/logos/1_5.png",
+
   },
   2: {
     id: 2,
@@ -25,7 +24,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Minnesota",
     color: "#2E8B57",
     colorAlt: "#B0C4DE",
-    logo: "https://assets.leaguestat.com/pwhl/logos/2_5.png",
+
   },
   3: {
     id: 3,
@@ -34,7 +33,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Montréal",
     color: "#862633",
     colorAlt: "#FFFFFF",
-    logo: "https://assets.leaguestat.com/pwhl/logos/3_5.png",
+
   },
   4: {
     id: 4,
@@ -43,7 +42,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "New York",
     color: "#FF6B35",
     colorAlt: "#1B3A5C",
-    logo: "https://assets.leaguestat.com/pwhl/logos/4_5.png",
+
   },
   5: {
     id: 5,
@@ -52,7 +51,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Ottawa",
     color: "#C8102E",
     colorAlt: "#1D1D1B",
-    logo: "https://assets.leaguestat.com/pwhl/logos/5_5.png",
+
   },
   6: {
     id: 6,
@@ -61,7 +60,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Toronto",
     color: "#00205B",
     colorAlt: "#C4A14A",
-    logo: "https://assets.leaguestat.com/pwhl/logos/6_5.png",
+
   },
   8: {
     id: 8,
@@ -70,7 +69,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Seattle",
     color: "#003D5C",
     colorAlt: "#69BE94",
-    logo: "https://assets.leaguestat.com/pwhl/logos/8_5.png",
+
   },
   9: {
     id: 9,
@@ -79,7 +78,7 @@ export const TEAMS: Record<number, TeamMeta> = {
     city: "Vancouver",
     color: "#00843D",
     colorAlt: "#FFD700",
-    logo: "https://assets.leaguestat.com/pwhl/logos/9_5.png",
+
   },
 };
 
@@ -109,7 +108,6 @@ export function getTeamMeta(id: number | string): TeamMeta {
     city: "Unknown",
     color: "#666666",
     colorAlt: "#999999",
-    logo: "",
   };
 }
 

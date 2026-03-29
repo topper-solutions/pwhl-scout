@@ -1,17 +1,16 @@
 import { getSkaterStats, getGoalieStats, extractSiteKit } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
+import { val } from "@/lib/utils";
 import Link from "next/link";
 
 export const revalidate = 300;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+export const metadata = {
+  title: "Player Stats | PWHL Scout",
+  description: "PWHL player statistics for the 2025-2026 season.",
+};
 
-function val(obj: any, ...keys: string[]) {
-  for (const k of keys) {
-    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
-  }
-  return "—";
-}
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default async function StatsPage({
   searchParams,

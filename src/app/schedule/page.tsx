@@ -1,24 +1,16 @@
 import { getSeasonSchedule, extractSiteKit } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
+import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 
 export const revalidate = 300;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+export const metadata = {
+  title: "Schedule | PWHL Scout",
+  description: "PWHL game schedule for the 2025-2026 season.",
+};
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default async function SchedulePage({
   searchParams,
