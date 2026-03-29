@@ -1,17 +1,26 @@
 import { getGameSummary, getPlayByPlay, extractSiteKit } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import type { Metadata } from "next";
 
 export const revalidate = 60;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { val } from "@/lib/utils";
 
-function val(obj: any, ...keys: string[]) {
-  for (const k of keys) {
-    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
-  }
-  return "—";
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  return {
+    title: `Game #${params.id} | PWHL Scout`,
+    description: `PWHL game details and box score for game ${params.id}.`,
+  };
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 function GoalRow({ goal }: { goal: any }) {
   const team = getTeamMeta(goal.team_id ?? goal.team ?? 0);
@@ -105,6 +114,7 @@ export default async function GamePage({
   params: { id: string };
 }) {
   const gameId = parseInt(params.id);
+  if (isNaN(gameId)) notFound();
 
   let summary: any = null;
   let pbp: any[] = [];

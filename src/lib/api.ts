@@ -1,9 +1,10 @@
 const HOCKEYTECH_BASE = "https://lscluster.hockeytech.com/feed/index.php";
-const HOCKEYTECH_PARAMS = "key=446521baf8c38984&client_code=pwhl";
+const HOCKEYTECH_KEY = process.env.HOCKEYTECH_API_KEY;
+const HOCKEYTECH_CLIENT = process.env.HOCKEYTECH_CLIENT_CODE ?? "pwhl";
 
 const FIREBASE_BASE = "https://leaguestat-b9523.firebaseio.com/svf/pwhl";
-const FIREBASE_AUTH =
-  "auth=uwM69pPkdUhb0UuVAxM8IcA6pBAzATAxOc8979oJ&key=AIzaSyBVn0Gr6zIFtba-hQy3StkifD8bb7Hi68A";
+const FIREBASE_AUTH_TOKEN = process.env.FIREBASE_AUTH_TOKEN;
+const FIREBASE_KEY = process.env.FIREBASE_API_KEY;
 
 export const CURRENT_SEASON_ID = 8;
 
@@ -43,15 +44,25 @@ function parseHockeyTechResponse(body: string) {
 }
 
 async function htFetch(params: string) {
-  const url = `${HOCKEYTECH_BASE}?${params}&${HOCKEYTECH_PARAMS}`;
+  if (!HOCKEYTECH_KEY) throw new Error("HOCKEYTECH_API_KEY is not set");
+  const url = `${HOCKEYTECH_BASE}?${params}&key=${HOCKEYTECH_KEY}&client_code=${HOCKEYTECH_CLIENT}`;
   const res = await fetch(url, { next: { revalidate: 60 } });
+  if (!res.ok) {
+    throw new Error(`HockeyTech API error: ${res.status} ${res.statusText}`);
+  }
   const text = await res.text();
   return parseHockeyTechResponse(text);
 }
 
 async function firebaseFetch(path: string) {
-  const url = `${FIREBASE_BASE}${path}.json?${FIREBASE_AUTH}`;
+  if (!FIREBASE_AUTH_TOKEN || !FIREBASE_KEY) {
+    throw new Error("Firebase credentials are not set");
+  }
+  const url = `${FIREBASE_BASE}${path}.json?auth=${FIREBASE_AUTH_TOKEN}&key=${FIREBASE_KEY}`;
   const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Firebase API error: ${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
