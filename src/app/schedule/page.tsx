@@ -2,6 +2,7 @@ import { getSeasonSchedule, getTeamSchedule } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import { formatDate } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
 export const revalidate = 300;
@@ -155,12 +156,7 @@ export default async function SchedulePage({
                             href={`/team/${away.id}`}
                             className="flex items-center gap-2 hover:text-white transition-colors"
                           >
-                            <div
-                              className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white"
-                              style={{ backgroundColor: away.color }}
-                            >
-                              {away.abbr}
-                            </div>
+                            <TeamLogo team={away} size="xs" />
                             <span className="text-sm font-medium">
                               {away.city}
                             </span>
@@ -186,12 +182,7 @@ export default async function SchedulePage({
                             href={`/team/${home.id}`}
                             className="flex items-center gap-2 hover:text-white transition-colors"
                           >
-                            <div
-                              className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white"
-                              style={{ backgroundColor: home.color }}
-                            >
-                              {home.abbr}
-                            </div>
+                            <TeamLogo team={home} size="xs" />
                             <span className="text-sm font-medium">
                               {home.city}
                             </span>

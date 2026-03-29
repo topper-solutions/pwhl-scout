@@ -1,6 +1,7 @@
 import { getStandings } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import { ErrorBanner } from "@/components/error-banner";
+import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
 export const revalidate = 120;
@@ -90,12 +91,7 @@ export default async function StandingsPage() {
                         href={`/team/${team.id}`}
                         className="flex items-center gap-2.5 hover:text-white transition-colors"
                       >
-                        <div
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-black text-white shadow"
-                          style={{ backgroundColor: team.color }}
-                        >
-                          {team.abbr}
-                        </div>
+                        <TeamLogo team={team} size="md" />
                         <span className="font-medium text-sm">
                           {row.team_name ?? `${team.city} ${team.name}`}
                         </span>
