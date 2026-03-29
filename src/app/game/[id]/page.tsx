@@ -340,67 +340,77 @@ export default async function GamePage({
             </div>
           )}
 
-          {(summary.shotsByPeriod || summary.totalShots) && (
-            <div className="glass-card overflow-hidden">
-              <div className="px-5 py-3 border-b border-rink-700/30">
-                <h2 className="section-title text-base">Shots on Goal</h2>
+          {(summary.shotsByPeriod || summary.totalShots) && (() => {
+            const visitorShots = summary.shotsByPeriod?.visitor ?? {};
+            const homeShots = summary.shotsByPeriod?.home ?? {};
+            const periods = Object.keys(visitorShots);
+            const totalVisitor = Number(summary.totalShots?.visitor) || 0;
+            const totalHome = Number(summary.totalShots?.home) || 0;
+            const totalShots = totalVisitor + totalHome;
+            const visitorPct = totalShots > 0 ? (totalVisitor / totalShots) * 100 : 50;
+
+            return (
+              <div className="glass-card overflow-hidden">
+                <div className="px-5 py-3 border-b border-rink-700/30">
+                  <h2 className="section-title text-base">Shots on Goal</h2>
+                </div>
+                <div className="p-4">
+                  {periods.length > 0 && (
+                    <table className="w-full text-xs mb-4">
+                      <thead>
+                        <tr className="text-gray-500">
+                          <th className="text-left w-16 py-1"></th>
+                          {periods.map((p) => (
+                            <th key={p} className="text-center w-8 py-1">
+                              {periodLabel(p)}
+                            </th>
+                          ))}
+                          <th className="text-center w-8 py-1 font-bold text-gray-400">T</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-t border-rink-800/30">
+                          <td className="py-1.5 font-bold text-gray-300">{awayTeam.abbr}</td>
+                          {periods.map((p) => (
+                            <td key={p} className="text-center text-gray-400 font-mono">
+                              {visitorShots[p] ?? 0}
+                            </td>
+                          ))}
+                          <td className="text-center font-bold text-white font-mono">{totalVisitor}</td>
+                        </tr>
+                        <tr className="border-t border-rink-800/30">
+                          <td className="py-1.5 font-bold text-gray-300">{homeTeam.abbr}</td>
+                          {periods.map((p) => (
+                            <td key={p} className="text-center text-gray-400 font-mono">
+                              {homeShots[p] ?? 0}
+                            </td>
+                          ))}
+                          <td className="text-center font-bold text-white font-mono">{totalHome}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
+
+                  {totalShots > 0 && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-bold text-gray-300 w-10 text-right">{awayTeam.abbr}</span>
+                      <div className="flex-1 h-3 rounded-full overflow-hidden bg-rink-800/50 flex">
+                        <div
+                          className="h-full rounded-l-full transition-all"
+                          style={{ width: `${visitorPct}%`, backgroundColor: awayTeam.color }}
+                        />
+                        <div
+                          className="h-full rounded-r-full transition-all"
+                          style={{ width: `${100 - visitorPct}%`, backgroundColor: homeTeam.color }}
+                        />
+                      </div>
+                      <span className="font-bold text-gray-300 w-10">{homeTeam.abbr}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="p-4">
-                <table className="stat-table">
-                  <thead>
-                    <tr>
-                      <th>Team</th>
-                      {summary.shotsByPeriod &&
-                        Object.keys(
-                          typeof summary.shotsByPeriod === "object"
-                            ? summary.shotsByPeriod
-                            : {}
-                        ).map((p) => (
-                          <th key={p} className="num text-xs">
-                            {periodLabel(p)}
-                          </th>
-                        ))}
-                      <th className="num">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="text-sm font-medium">{awayTeam.abbr}</td>
-                      {summary.shotsByPeriod &&
-                        Object.entries(
-                          typeof summary.shotsByPeriod === "object"
-                            ? summary.shotsByPeriod
-                            : {}
-                        ).map(([p, shots]: [string, any]) => (
-                          <td key={p} className="num text-sm">
-                            {shots?.visitor ?? "—"}
-                          </td>
-                        ))}
-                      <td className="num font-bold">
-                        {summary.totalShots?.visitor ?? "—"}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="text-sm font-medium">{homeTeam.abbr}</td>
-                      {summary.shotsByPeriod &&
-                        Object.entries(
-                          typeof summary.shotsByPeriod === "object"
-                            ? summary.shotsByPeriod
-                            : {}
-                        ).map(([p, shots]: [string, any]) => (
-                          <td key={p} className="num text-sm">
-                            {shots?.home ?? "—"}
-                          </td>
-                        ))}
-                      <td className="num font-bold">
-                        {summary.totalShots?.home ?? "—"}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Main content */}

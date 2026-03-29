@@ -72,8 +72,23 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
   const gamePens = pensRoot?.games?.[gameKey]?.GamePenalties;
   if (gamePens && typeof gamePens === "object") {
     const curPeriod = parseInt(period ?? "0");
+    const clockParts = clock?.split(":") ?? [];
+    const clockSeconds = clockParts.length === 2
+      ? parseInt(clockParts[0]) * 60 + parseInt(clockParts[1])
+      : 1200;
+
     for (const pen of Object.values(gamePens) as any[]) {
-      if (pen.Period >= curPeriod - 1) {
+      // Only show penalties from the current period that haven't expired
+      if (pen.Period !== curPeriod) continue;
+      const penTimeParts = (pen.Time ?? "").split(":");
+      const penTimeSeconds = penTimeParts.length === 2
+        ? parseInt(penTimeParts[0]) * 60 + parseInt(penTimeParts[1])
+        : 0;
+      // Hockey clocks count down: penalty at 15:00 with clock at 12:00 means
+      // 3 minutes elapsed. A 2-min minor expires when elapsed >= duration.
+      const elapsedSeconds = penTimeSeconds - clockSeconds;
+      const durationSeconds = (pen.Minutes ?? 2) * 60;
+      if (elapsedSeconds < durationSeconds) {
         const entry: LivePenalty = {
           playerName: `${pen.PenalizedPlayerFirstName ?? ""} ${pen.PenalizedPlayerLastName ?? ""}`.trim(),
           jerseyNumber: pen.PenalizedPlayerJerseyNumber ?? 0,
