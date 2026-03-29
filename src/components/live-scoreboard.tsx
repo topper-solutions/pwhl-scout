@@ -11,6 +11,10 @@ interface LivePenalty {
   playerName: string;
   jerseyNumber: number;
   isHome: boolean;
+  minutes: number;
+  offence: string;
+  remainingSeconds: number;
+  isMajor: boolean;
 }
 
 interface LiveState {
@@ -69,34 +73,84 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
     }
   }
 
+  const PERIOD_SECONDS = 1200; // 20 minutes per period
   const pensRoot = Array.isArray(data?.penalties) ? data.penalties.find((p: any) => p?.games) : data?.penalties;
   const gamePens = pensRoot?.games?.[gameKey]?.GamePenalties;
-  if (gamePens && typeof gamePens === "object") {
-    const curPeriod = parseInt(period ?? "0");
-    const clockParts = clock?.split(":") ?? [];
+  if (gamePens && typeof gamePens === "object" && clock !== null && period) {
+    const curPeriod = parseInt(period);
+    const clockParts = clock.split(":");
     const clockSeconds = clockParts.length === 2
       ? parseInt(clockParts[0]) * 60 + parseInt(clockParts[1])
-      : 1200;
+      : 0;
+    // Absolute game seconds elapsed: how far into the game we are
+    const gameElapsed = (curPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - clockSeconds);
+
+    // Collect PP goals with their absolute game time for minor termination
+    const ppGoalTimes: { gameSecond: number; againstHome: boolean }[] = [];
+    if (gameGoals && typeof gameGoals === "object") {
+      for (const goal of Object.values(gameGoals) as any[]) {
+        if (goal.PowerPlay) {
+          const gPeriod = parseInt(goal.Period ?? "1");
+          const gTimeParts = (goal.Time ?? "").split(":");
+          const gClockSec = gTimeParts.length === 2
+            ? parseInt(gTimeParts[0]) * 60 + parseInt(gTimeParts[1])
+            : 0;
+          const gGameSec = (gPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - gClockSec);
+          // A PP goal is scored against the team that committed the penalty
+          // goal.IsHome means the HOME team scored, so the penalty was on the VISITOR
+          ppGoalTimes.push({ gameSecond: gGameSec, againstHome: !goal.IsHome });
+        }
+      }
+    }
 
     for (const pen of Object.values(gamePens) as any[]) {
-      // Only show penalties from the current period that haven't expired
-      if (pen.Period !== curPeriod) continue;
+      const penPeriod = parseInt(pen.Period ?? "0");
       const penTimeParts = (pen.Time ?? "").split(":");
-      const penTimeSeconds = penTimeParts.length === 2
+      const penClockSec = penTimeParts.length === 2
         ? parseInt(penTimeParts[0]) * 60 + parseInt(penTimeParts[1])
         : 0;
-      // Hockey clocks count down: penalty at 15:00 with clock at 12:00 means
-      // 3 minutes elapsed. A 2-min minor expires when elapsed >= duration.
-      const elapsedSeconds = penTimeSeconds - clockSeconds;
+      // Absolute game second when penalty was called
+      const penGameSec = (penPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - penClockSec);
       const durationSeconds = (pen.Minutes ?? 2) * 60;
-      if (elapsedSeconds < durationSeconds) {
-        const entry: LivePenalty = {
+      const isMajor = (pen.Minutes ?? 2) >= 5;
+      const isHome = !!pen.Home;
+
+      // Natural expiry time (absolute game seconds)
+      let expiryGameSec = penGameSec + durationSeconds;
+
+      // For minor penalties (< 5 min), check if a PP goal terminated it early
+      if (!isMajor) {
+        for (const ppg of ppGoalTimes) {
+          if (ppg.againstHome === isHome &&
+              ppg.gameSecond > penGameSec &&
+              ppg.gameSecond < expiryGameSec) {
+            expiryGameSec = ppg.gameSecond;
+            break; // Only the first PP goal ends the penalty
+          }
+        }
+      }
+
+      // Still active?
+      if (gameElapsed < expiryGameSec) {
+        const remainingSeconds = expiryGameSec - gameElapsed;
+        homePenalties.push({
           playerName: `${pen.PenalizedPlayerFirstName ?? ""} ${pen.PenalizedPlayerLastName ?? ""}`.trim(),
           jerseyNumber: pen.PenalizedPlayerJerseyNumber ?? 0,
-          isHome: !!pen.Home,
-        };
-        if (entry.isHome) homePenalties.push(entry); else visitorPenalties.push(entry);
+          isHome,
+          minutes: pen.Minutes ?? 2,
+          offence: pen.OffenceDescription ?? "Penalty",
+          remainingSeconds,
+          isMajor,
+        });
       }
+    }
+
+    // Split into home/visitor (built into homePenalties, need to redistribute)
+    const allPens = [...homePenalties];
+    homePenalties.length = 0;
+    for (const p of allPens) {
+      if (p.isHome) homePenalties.push(p);
+      else visitorPenalties.push(p);
     }
   }
 
@@ -189,12 +243,28 @@ export function LiveScoreboard({
     if (penalties.length === 0) return null;
     return (
       <div className="space-y-1 w-full max-w-[180px]">
-        {penalties.map((pen, i) => (
-          <div key={i} className="flex items-center gap-1 rounded bg-amber-900/20 border border-amber-800/30 px-1.5 py-0.5">
-            <span className="text-[9px] font-bold text-amber-400">PEN</span>
-            <span className="text-[9px] text-gray-300 truncate">#{pen.jerseyNumber} {pen.playerName}</span>
-          </div>
-        ))}
+        {penalties.map((pen, i) => {
+          const mins = Math.floor(pen.remainingSeconds / 60);
+          const secs = pen.remainingSeconds % 60;
+          const timeStr = `${mins}:${String(secs).padStart(2, "0")}`;
+          return (
+            <div key={i} className={`flex items-center gap-1 rounded border px-1.5 py-0.5 ${
+              pen.isMajor
+                ? "bg-red-900/20 border-red-800/30"
+                : "bg-amber-900/20 border-amber-800/30"
+            }`}>
+              <span className={`text-[9px] font-bold ${pen.isMajor ? "text-red-400" : "text-amber-400"}`}>
+                {pen.isMajor ? "MAJ" : "PEN"}
+              </span>
+              <span className="text-[9px] text-gray-300 truncate">
+                #{pen.jerseyNumber} {pen.playerName}
+              </span>
+              <span className="text-[9px] font-mono text-gray-500 shrink-0">
+                {timeStr}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   }
