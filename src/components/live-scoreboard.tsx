@@ -28,7 +28,7 @@ const PERIOD_LABELS: Record<string, string> = {
   "1": "1st", "2": "2nd", "3": "3rd", "4": "OT",
 };
 
-function extractGameData(data: any, gameKey: string, homeTeamId: string) {
+export function extractGameData(data: any, gameKey: string, homeTeamId: string) {
   let clock: string | null = null;
   let period: string | null = null;
   let homeGoals = 0, visitorGoals = 0, homeShots = 0, visitorShots = 0;

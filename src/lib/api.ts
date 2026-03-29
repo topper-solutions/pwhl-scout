@@ -53,7 +53,7 @@ export function extractSiteKit(data: any, viewKey: string): any {
   return data;
 }
 
-function parseHockeyTechResponse(body: string) {
+export function parseHockeyTechResponse(body: string) {
   const trimmed = body.trim();
   // JSONP with named callback: Modulekit.callback({...})
   const namedMatch = trimmed.match(/^\w+\.callback\(([\s\S]+)\)$/);
