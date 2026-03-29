@@ -114,7 +114,7 @@ export default async function GamePage({
   params: { id: string };
 }) {
   const gameId = parseInt(params.id);
-  if (isNaN(gameId)) notFound();
+  if (isNaN(gameId) || gameId < 1) notFound();
 
   let summary: any = null;
   let pbp: any[] = [];
@@ -122,7 +122,8 @@ export default async function GamePage({
   try {
     const data = await getGameSummary(gameId);
     summary = extractSiteKit(data, "Gamesummary");
-  } catch {
+  } catch (error) {
+    console.error(`[GamePage] Failed to fetch game summary for game ${gameId}:`, error);
     summary = null;
   }
 
@@ -130,7 +131,8 @@ export default async function GamePage({
     const data = await getPlayByPlay(gameId);
     const raw = extractSiteKit(data, "Pxpverbose");
     pbp = Array.isArray(raw) ? raw : [];
-  } catch {
+  } catch (error) {
+    console.error(`[GamePage] Failed to fetch play-by-play for game ${gameId}:`, error);
     pbp = [];
   }
 

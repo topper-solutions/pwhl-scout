@@ -29,7 +29,7 @@ export default async function TeamPage({
   params: { id: string };
 }) {
   const teamId = parseInt(params.id);
-  if (isNaN(teamId)) notFound();
+  if (isNaN(teamId) || teamId < 1) notFound();
   const team = getTeamMeta(teamId);
 
   let roster: any[] = [];
@@ -39,11 +39,11 @@ export default async function TeamPage({
     const data = await getTeamRoster(teamId);
     const raw = extractSiteKit(data, "Roster");
     roster = Array.isArray(raw) ? raw.filter((p: any) => typeof p === "object" && p !== null && !Array.isArray(p) && p.first_name) : [];
-    // Flatten position groups if needed
     if (roster.length > 0 && roster[0]?.sections) {
       roster = roster[0].sections.flatMap((s: any) => s.data ?? []);
     }
-  } catch {
+  } catch (error) {
+    console.error(`[TeamPage] Failed to fetch roster for team ${teamId}:`, error);
     roster = [];
   }
 
@@ -51,7 +51,8 @@ export default async function TeamPage({
     const data = await getTeamSchedule(teamId);
     const raw = extractSiteKit(data, "Schedule");
     schedule = Array.isArray(raw) ? raw : [];
-  } catch {
+  } catch (error) {
+    console.error(`[TeamPage] Failed to fetch schedule for team ${teamId}:`, error);
     schedule = [];
   }
 

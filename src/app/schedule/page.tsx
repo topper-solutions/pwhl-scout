@@ -1,6 +1,7 @@
 import { getSeasonSchedule, extractSiteKit } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import { formatDate } from "@/lib/utils";
+import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
 
 export const revalidate = 300;
@@ -19,12 +20,25 @@ export default async function SchedulePage({
 }) {
   let games: any[] = [];
 
+  let fetchError = false;
   try {
     const data = await getSeasonSchedule();
     const raw = extractSiteKit(data, "Schedule");
     games = Array.isArray(raw) ? raw : [];
-  } catch {
-    games = [];
+  } catch (error) {
+    console.error("[SchedulePage] Failed to fetch schedule:", error);
+    fetchError = true;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="animate-fade-in">
+        <div className="page-header">
+          <h1 className="page-title">Schedule</h1>
+        </div>
+        <ErrorBanner message="Unable to load schedule." />
+      </div>
+    );
   }
 
   const teamFilter = searchParams.team ? parseInt(searchParams.team) : null;

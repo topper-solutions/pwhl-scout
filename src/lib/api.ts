@@ -6,7 +6,23 @@ const FIREBASE_BASE = "https://leaguestat-b9523.firebaseio.com/svf/pwhl";
 const FIREBASE_AUTH_TOKEN = process.env.FIREBASE_AUTH_TOKEN;
 const FIREBASE_KEY = process.env.FIREBASE_API_KEY;
 
+const FETCH_TIMEOUT_MS = 10_000;
+
 export const CURRENT_SEASON_ID = 8;
+
+// Validate required env vars at module load — fails fast at startup
+function validateEnv() {
+  const missing: string[] = [];
+  if (!HOCKEYTECH_KEY) missing.push("HOCKEYTECH_API_KEY");
+  if (!FIREBASE_AUTH_TOKEN) missing.push("FIREBASE_AUTH_TOKEN");
+  if (!FIREBASE_KEY) missing.push("FIREBASE_API_KEY");
+  if (missing.length > 0) {
+    console.error(
+      `[api] Missing required environment variables: ${missing.join(", ")}. See .env.example`
+    );
+  }
+}
+validateEnv();
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -46,7 +62,10 @@ function parseHockeyTechResponse(body: string) {
 async function htFetch(params: string) {
   if (!HOCKEYTECH_KEY) throw new Error("HOCKEYTECH_API_KEY is not set");
   const url = `${HOCKEYTECH_BASE}?${params}&key=${HOCKEYTECH_KEY}&client_code=${HOCKEYTECH_CLIENT}`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
+  const res = await fetch(url, {
+    next: { revalidate: 60 },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) {
     throw new Error(`HockeyTech API error: ${res.status} ${res.statusText}`);
   }
@@ -59,7 +78,10 @@ async function firebaseFetch(path: string) {
     throw new Error("Firebase credentials are not set");
   }
   const url = `${FIREBASE_BASE}${path}.json?auth=${FIREBASE_AUTH_TOKEN}&key=${FIREBASE_KEY}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) {
     throw new Error(`Firebase API error: ${res.status} ${res.statusText}`);
   }

@@ -1,5 +1,6 @@
 import { getScorebar, getStandings, getTopScorers, extractSiteKit } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
+import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
 
 export const revalidate = 60;
@@ -239,24 +240,25 @@ export default async function HomePage() {
   let scorebar: any[] = [];
   let standings: any[] = [];
   let topScorers: any[] = [];
+  let scorebarError = false;
 
   try {
     const scoreData = await getScorebar(3, 3);
     const raw = extractSiteKit(scoreData, "Scorebar");
     scorebar = Array.isArray(raw) ? raw : [];
-  } catch {
-    scorebar = [];
+  } catch (error) {
+    console.error("[HomePage] Failed to fetch scorebar:", error);
+    scorebarError = true;
   }
 
   try {
     const standData = await getStandings();
     const raw = extractSiteKit(standData, "Statviewtype");
-    // First element is a header row with repeatheader, skip it
     standings = Array.isArray(raw)
       ? raw.filter((r: any) => r.team_id)
       : [];
-  } catch {
-    standings = [];
+  } catch (error) {
+    console.error("[HomePage] Failed to fetch standings:", error);
   }
 
   try {
@@ -265,8 +267,8 @@ export default async function HomePage() {
     topScorers = Array.isArray(raw)
       ? raw.filter((r: any) => r.player_name || r.name || r.first_name)
       : [];
-  } catch {
-    topScorers = [];
+  } catch (error) {
+    console.error("[HomePage] Failed to fetch top scorers:", error);
   }
 
   return (
@@ -278,7 +280,9 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {scorebar.length > 0 ? (
+      {scorebarError ? (
+        <ErrorBanner message="Unable to load scores. The data source may be temporarily unavailable." />
+      ) : scorebar.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {scorebar.map((game: any, i: number) => (
             <ScoreCard key={game.game_id ?? game.GameID ?? i} game={game} />

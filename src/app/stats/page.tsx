@@ -1,6 +1,7 @@
 import { getSkaterStats, getGoalieStats, extractSiteKit } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import { val } from "@/lib/utils";
+import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
 
 export const revalidate = 300;
@@ -22,6 +23,7 @@ export default async function StatsPage({
 
   let players: any[] = [];
 
+  let fetchError = false;
   try {
     if (view === "goalies") {
       const data = await getGoalieStats();
@@ -32,8 +34,20 @@ export default async function StatsPage({
       const raw = extractSiteKit(data, "Players");
       players = Array.isArray(raw) ? raw : [];
     }
-  } catch {
-    players = [];
+  } catch (error) {
+    console.error("[StatsPage] Failed to fetch player stats:", error);
+    fetchError = true;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="animate-fade-in">
+        <div className="page-header">
+          <h1 className="page-title">Player Stats</h1>
+        </div>
+        <ErrorBanner message="Unable to load player stats." />
+      </div>
+    );
   }
 
   if (teamFilter) {
