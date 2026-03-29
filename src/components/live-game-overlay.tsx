@@ -25,13 +25,14 @@ interface LiveState {
   homePenalties: LivePenalty[];
   visitorPenalties: LivePenalty[];
   connected: boolean;
+  lastUpdated: number;
 }
 
 function extractGameData(
   data: any,
   gameKey: string,
   homeTeamId: string
-): Omit<LiveState, "connected"> {
+): Omit<LiveState, "connected" | "lastUpdated"> {
   let clock: string | null = null;
   let period: string | null = null;
   let homeGoals = 0;
@@ -41,7 +42,6 @@ function extractGameData(
   const homePenalties: LivePenalty[] = [];
   const visitorPenalties: LivePenalty[] = [];
 
-  // Clock: {games: {"302": {Clock: {Minutes, Seconds, period}}}}
   const clockGames = data?.runningclock?.games ?? data?.runningclock;
   const gameClock = clockGames?.[gameKey];
   if (gameClock?.Clock) {
@@ -49,7 +49,6 @@ function extractGameData(
     period = String(gameClock.Clock.period ?? "");
   }
 
-  // Goals: [null, {games: {"302": {GameGoals: {...}}}}]
   const goalsRoot = Array.isArray(data?.goals)
     ? data.goals.find((g: any) => g?.games)
     : data?.goals;
@@ -61,7 +60,6 @@ function extractGameData(
     }
   }
 
-  // Shots: [null, {games: {"302": {GameShotSummary: {...}}}}]
   const shotsRoot = Array.isArray(data?.shotssummary)
     ? data.shotssummary.find((s: any) => s?.games)
     : data?.shotssummary;
@@ -83,7 +81,6 @@ function extractGameData(
     }
   }
 
-  // Penalties: [null, {games: {"302": {GamePenalties: {...}}}}]
   const pensRoot = Array.isArray(data?.penalties)
     ? data.penalties.find((p: any) => p?.games)
     : data?.penalties;
@@ -91,7 +88,6 @@ function extractGameData(
   if (gamePenalties && typeof gamePenalties === "object") {
     const currentPeriod = parseInt(period ?? "0");
     for (const pen of Object.values(gamePenalties) as any[]) {
-      // Show penalties from current period or previous period (could still be active)
       if (pen.Period >= currentPeriod - 1) {
         const entry: LivePenalty = {
           playerName: `${pen.PenalizedPlayerFirstName ?? ""} ${pen.PenalizedPlayerLastName ?? ""}`.trim(),
@@ -114,16 +110,19 @@ function extractGameData(
   };
 }
 
+// Renders inline within the scoreboard — not a standalone card
 export function LiveGameOverlay({
   gameId,
   homeTeamId,
   visitorTeamId,
   isLive,
+  children,
 }: {
   gameId: number;
   homeTeamId: string;
   visitorTeamId: string;
   isLive: boolean;
+  children: (live: LiveState) => React.ReactNode;
 }) {
   const [live, setLive] = useState<LiveState>({
     clock: null,
@@ -135,13 +134,12 @@ export function LiveGameOverlay({
     homePenalties: [],
     visitorPenalties: [],
     connected: false,
+    lastUpdated: 0,
   });
 
   const homeTeam = getTeamMeta(homeTeamId);
   const visitorTeam = getTeamMeta(visitorTeamId);
   const gameKey = String(gameId);
-
-  // Store the full Firebase tree so patch events can be merged
   const fullDataRef = useRef<any>(null);
 
   useEffect(() => {
@@ -155,20 +153,15 @@ export function LiveGameOverlay({
         if (payload.path === "/" && payload.data) {
           fullDataRef.current = payload.data;
           const extracted = extractGameData(payload.data, gameKey, homeTeamId);
-          if (extracted.clock !== null || extracted.homeGoals > 0 || extracted.visitorGoals > 0) {
-            setLive({ ...extracted, connected: true });
-          }
+          setLive({ ...extracted, connected: true, lastUpdated: Date.now() });
         }
-      } catch {
-        // Ignore malformed events
-      }
+      } catch { /* ignore */ }
     });
 
     eventSource.addEventListener("patch", (event: MessageEvent) => {
       try {
         const payload = JSON.parse(event.data);
         if (payload.data && fullDataRef.current) {
-          // Merge patch into full data at the given path
           const path = payload.path?.replace(/^\//, "");
           if (path) {
             const parts = path.split("/");
@@ -186,139 +179,22 @@ export function LiveGameOverlay({
           } else {
             fullDataRef.current = { ...fullDataRef.current, ...payload.data };
           }
-
-          // Re-extract from merged data
           const extracted = extractGameData(fullDataRef.current, gameKey, homeTeamId);
-          if (extracted.clock !== null || extracted.homeGoals > 0 || extracted.visitorGoals > 0) {
-            setLive({ ...extracted, connected: true });
-          }
+          setLive({ ...extracted, connected: true, lastUpdated: Date.now() });
         }
-      } catch {
-        // Ignore malformed events
-      }
+      } catch { /* ignore */ }
     });
 
     eventSource.onerror = () => {
       setLive((prev) => ({ ...prev, connected: false }));
     };
 
-    return () => {
-      eventSource.close();
-    };
+    return () => { eventSource.close(); };
   }, [isLive, gameKey, homeTeamId]);
 
-  if (!isLive || !live.connected) return null;
+  // Expose live data + team info to parent via render prop
+  void homeTeam;
+  void visitorTeam;
 
-  const periodLabel =
-    live.period === "1"
-      ? "1st"
-      : live.period === "2"
-      ? "2nd"
-      : live.period === "3"
-      ? "3rd"
-      : live.period
-      ? "OT"
-      : "";
-
-  return (
-    <div className="glass-card border-rink-600/30 overflow-hidden mb-4 animate-fade-in">
-      <div className="px-4 py-3 flex items-center justify-between bg-rink-800/30">
-        <div className="flex items-center gap-2">
-          <span className="live-dot" />
-          <span className="text-xs font-bold uppercase text-live tracking-wider">
-            Live
-          </span>
-        </div>
-        <span className="text-xs font-mono text-ice-dim">
-          {periodLabel} {live.clock ?? ""}
-        </span>
-      </div>
-
-      <div className="px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-start gap-4">
-        {/* Visitor side */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
-              style={{ backgroundColor: visitorTeam.color }}
-            >
-              {visitorTeam.abbr}
-            </div>
-            <span className="font-mono text-2xl font-bold text-white tabular-nums">
-              {live.visitorGoals}
-            </span>
-          </div>
-          {live.visitorPenalties.length > 0 && (
-            <div className="w-full space-y-1">
-              {live.visitorPenalties.map((pen, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-1.5 rounded bg-amber-900/20 border border-amber-800/30 px-2 py-1"
-                >
-                  <span className="text-[10px] font-bold text-amber-400 uppercase shrink-0">
-                    PEN
-                  </span>
-                  <span className="text-[10px] text-gray-300 truncate">
-                    #{pen.jerseyNumber} {pen.playerName}
-                  </span>
-                  <span className="text-[10px] text-gray-500 shrink-0">
-                    {pen.minutes}min
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <span className="text-gray-600 text-sm mt-1.5">&mdash;</span>
-
-        {/* Home side */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-2xl font-bold text-white tabular-nums">
-              {live.homeGoals}
-            </span>
-            <div
-              className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-black text-white"
-              style={{ backgroundColor: homeTeam.color }}
-            >
-              {homeTeam.abbr}
-            </div>
-          </div>
-          {live.homePenalties.length > 0 && (
-            <div className="w-full space-y-1">
-              {live.homePenalties.map((pen, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-1.5 rounded bg-amber-900/20 border border-amber-800/30 px-2 py-1"
-                >
-                  <span className="text-[10px] font-bold text-amber-400 uppercase shrink-0">
-                    PEN
-                  </span>
-                  <span className="text-[10px] text-gray-300 truncate">
-                    #{pen.jerseyNumber} {pen.playerName}
-                  </span>
-                  <span className="text-[10px] text-gray-500 shrink-0">
-                    {pen.minutes}min
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {(live.homeShots > 0 || live.visitorShots > 0) && (
-        <div className="px-4 pb-3 flex items-center justify-center gap-4 text-xs text-gray-400">
-          <span>
-            SOG: {visitorTeam.abbr} {live.visitorShots}
-          </span>
-          <span className="text-gray-600">|</span>
-          <span>
-            {homeTeam.abbr} {live.homeShots}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+  return <>{children(live)}</>;
 }
