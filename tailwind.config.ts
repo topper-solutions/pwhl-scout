@@ -27,9 +27,7 @@ const config: Config = {
           bright: "#e8f4fc",
           dim: "#8bbdd9",
         },
-        frost: "#b8dff0",
         live: "#ef4444",
-        final: "#6b7280",
       },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"],
@@ -38,27 +36,16 @@ const config: Config = {
       },
       animation: {
         "pulse-live": "pulse-live 2s ease-in-out infinite",
-        "slide-in": "slide-in 0.4s ease-out",
         "fade-in": "fade-in 0.5s ease-out",
-        "score-pop": "score-pop 0.3s ease-out",
       },
       keyframes: {
         "pulse-live": {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
-        "slide-in": {
-          from: { transform: "translateY(8px)", opacity: "0" },
-          to: { transform: "translateY(0)", opacity: "1" },
-        },
         "fade-in": {
           from: { opacity: "0" },
           to: { opacity: "1" },
-        },
-        "score-pop": {
-          "0%": { transform: "scale(1)" },
-          "50%": { transform: "scale(1.15)" },
-          "100%": { transform: "scale(1)" },
         },
       },
     },

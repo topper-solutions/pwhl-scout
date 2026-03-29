@@ -1,5 +1,6 @@
-import { getScorebar, getStandings, getTopScorers, extractSiteKit } from "@/lib/api";
+import { getScorebar, getStandings, getTopScorers } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
+import { playerName, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
 
@@ -41,20 +42,19 @@ function ScoreCard({ game }: { game: any }) {
   const gameId = game.ID ?? game.game_id;
   const gameDate = game.GameDate ?? game.date_with_day ?? "";
   const gameTime = game.ScheduledFormattedTime ?? game.schedule_time ?? "";
-  // GameStatus codes: 1=Not Started, 2=In Progress, 3=Intermission, 4=Final
-  const isLive = statusCode === "2" || statusCode === "3" || statusStr.toLowerCase().includes("progress");
-  const isFinal = statusCode === "4" || statusStr.toLowerCase().includes("final");
+  const live = isGameLive(statusCode || statusStr);
+  const final_ = isGameFinal(statusCode || statusStr);
 
   return (
     <Link
       href={`/game/${gameId}`}
       className={`glass-card block transition-all hover:scale-[1.02] hover:border-rink-600/50 ${
-        isLive ? "ring-1 ring-live/30" : ""
+        live ? "ring-1 ring-live/30" : ""
       }`}
     >
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <GameStatus status={statusStr || (isFinal ? "Final" : isLive ? "In Progress" : "Scheduled")} />
+          <GameStatus status={statusStr || (final_ ? "Final" : live ? "In Progress" : "Scheduled")} />
           {gameDate && (
             <span className="text-[10px] text-gray-500 uppercase tracking-wide">
               {gameDate}
@@ -62,7 +62,7 @@ function ScoreCard({ game }: { game: any }) {
           )}
         </div>
 
-        {/* Away team */}
+
         <div className="flex items-center justify-between py-1.5">
           <div className="flex items-center gap-2.5">
             <div
@@ -75,14 +75,14 @@ function ScoreCard({ game }: { game: any }) {
               {game.VisitorLongName ?? `${awayTeam.city} ${awayTeam.name}`}
             </span>
           </div>
-          {(isLive || isFinal) && (
+          {(live || final_) && (
             <span className="font-mono text-xl font-bold text-white tabular-nums">
               {awayScore}
             </span>
           )}
         </div>
 
-        {/* Home team */}
+
         <div className="flex items-center justify-between py-1.5">
           <div className="flex items-center gap-2.5">
             <div
@@ -95,14 +95,14 @@ function ScoreCard({ game }: { game: any }) {
               {game.HomeLongName ?? `${homeTeam.city} ${homeTeam.name}`}
             </span>
           </div>
-          {(isLive || isFinal) && (
+          {(live || final_) && (
             <span className="font-mono text-xl font-bold text-white tabular-nums">
               {homeScore}
             </span>
           )}
         </div>
 
-        {isLive && (
+        {live && (
           <div className="mt-2 text-center">
             <span className="text-xs font-mono text-ice-dim">
               {game.PeriodNameLong ?? game.PeriodNameShort ?? ""}{" "}
@@ -111,7 +111,7 @@ function ScoreCard({ game }: { game: any }) {
           </div>
         )}
 
-        {!isLive && !isFinal && gameTime && (
+        {!live && !final_ && gameTime && (
           <div className="mt-2 text-center">
             <span className="text-sm font-mono text-ice-dim">{gameTime}</span>
           </div>
@@ -212,9 +212,7 @@ function TopScorersPreview({ scorers }: { scorers: any[] }) {
                     />
                     <div>
                       <span className="font-medium text-sm">
-                        {p.player_name ??
-                          p.name ??
-                          `${p.first_name ?? ""} ${p.last_name ?? ""}`}
+                        {playerName(p)}
                       </span>
                       <span className="ml-1.5 text-[10px] text-gray-500">
                         {team.abbr}
@@ -237,39 +235,20 @@ function TopScorersPreview({ scorers }: { scorers: any[] }) {
 }
 
 export default async function HomePage() {
-  let scorebar: any[] = [];
-  let standings: any[] = [];
-  let topScorers: any[] = [];
-  let scorebarError = false;
+  const [scorebarResult, standingsResult, scorersResult] = await Promise.allSettled([
+    getScorebar(3, 3),
+    getStandings(),
+    getTopScorers(),
+  ]);
 
-  try {
-    const scoreData = await getScorebar(3, 3);
-    const raw = extractSiteKit(scoreData, "Scorebar");
-    scorebar = Array.isArray(raw) ? raw : [];
-  } catch (error) {
-    console.error("[HomePage] Failed to fetch scorebar:", error);
-    scorebarError = true;
-  }
+  const scorebar = scorebarResult.status === "fulfilled" ? scorebarResult.value : [];
+  const standings = standingsResult.status === "fulfilled" ? standingsResult.value : [];
+  const topScorers = scorersResult.status === "fulfilled" ? scorersResult.value : [];
+  const scorebarError = scorebarResult.status === "rejected";
 
-  try {
-    const standData = await getStandings();
-    const raw = extractSiteKit(standData, "Statviewtype");
-    standings = Array.isArray(raw)
-      ? raw.filter((r: any) => r.team_id)
-      : [];
-  } catch (error) {
-    console.error("[HomePage] Failed to fetch standings:", error);
-  }
-
-  try {
-    const scorerData = await getTopScorers();
-    const raw = extractSiteKit(scorerData, "Statviewtype");
-    topScorers = Array.isArray(raw)
-      ? raw.filter((r: any) => r.player_name || r.name || r.first_name)
-      : [];
-  } catch (error) {
-    console.error("[HomePage] Failed to fetch top scorers:", error);
-  }
+  if (scorebarResult.status === "rejected") console.error("[HomePage] Failed to fetch scorebar:", scorebarResult.reason);
+  if (standingsResult.status === "rejected") console.error("[HomePage] Failed to fetch standings:", standingsResult.reason);
+  if (scorersResult.status === "rejected") console.error("[HomePage] Failed to fetch top scorers:", scorersResult.reason);
 
   return (
     <div className="space-y-8 animate-fade-in">

@@ -1,4 +1,4 @@
-import { getStandings, extractSiteKit } from "@/lib/api";
+import { getStandings } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
@@ -17,11 +17,7 @@ export default async function StandingsPage() {
   let fetchError = false;
 
   try {
-    const data = await getStandings();
-    const raw = extractSiteKit(data, "Statviewtype");
-    standings = Array.isArray(raw)
-      ? raw.filter((r: any) => r.team_id)
-      : [];
+    standings = await getStandings();
   } catch (error) {
     console.error("[StandingsPage] Failed to fetch standings:", error);
     fetchError = true;

@@ -1,4 +1,4 @@
-import { getTeamRoster, getTeamSchedule, extractSiteKit } from "@/lib/api";
+import { getTeamRoster, getTeamSchedule } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 
 export const revalidate = 300;
 
-import { formatDate } from "@/lib/utils";
+import { formatDate, playerName } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -37,26 +37,16 @@ export default async function TeamPage({
   let roster: any[] = [];
   let schedule: any[] = [];
 
-  try {
-    const data = await getTeamRoster(teamId);
-    const raw = extractSiteKit(data, "Roster");
-    roster = Array.isArray(raw) ? raw.filter((p: any) => typeof p === "object" && p !== null && !Array.isArray(p) && p.first_name) : [];
-    if (roster.length > 0 && roster[0]?.sections) {
-      roster = roster[0].sections.flatMap((s: any) => s.data ?? []);
-    }
-  } catch (error) {
-    console.error(`[TeamPage] Failed to fetch roster for team ${teamId}:`, error);
-    roster = [];
-  }
+  const [rosterResult, scheduleResult] = await Promise.allSettled([
+    getTeamRoster(teamId),
+    getTeamSchedule(teamId),
+  ]);
 
-  try {
-    const data = await getTeamSchedule(teamId);
-    const raw = extractSiteKit(data, "Schedule");
-    schedule = Array.isArray(raw) ? raw : [];
-  } catch (error) {
-    console.error(`[TeamPage] Failed to fetch schedule for team ${teamId}:`, error);
-    schedule = [];
-  }
+  roster = rosterResult.status === "fulfilled" ? rosterResult.value : [];
+  schedule = scheduleResult.status === "fulfilled" ? scheduleResult.value : [];
+
+  if (rosterResult.status === "rejected") console.error(`[TeamPage] Failed to fetch roster for team ${teamId}:`, rosterResult.reason);
+  if (scheduleResult.status === "rejected") console.error(`[TeamPage] Failed to fetch schedule for team ${teamId}:`, scheduleResult.reason);
 
   // Separate roster by position
   const forwards = roster.filter((p: any) =>
@@ -106,8 +96,7 @@ export default async function TeamPage({
                   </td>
                   <td>
                     <span className="font-medium text-sm text-white">
-                      {p.name ??
-                        `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()}
+                      {playerName(p)}
                     </span>
                   </td>
                   <td className="text-xs text-gray-400">
