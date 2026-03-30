@@ -1,6 +1,7 @@
 import { getTeamRoster, getTeamSchedule } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import { TeamLogo } from "@/components/team-logo";
+import { DataFreshness } from "@/components/data-freshness";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -23,7 +24,7 @@ export async function generateMetadata({
   };
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { RosterPlayer, ScheduleGame } from "@/lib/types";
 
 export default async function TeamPage({
   params,
@@ -35,8 +36,8 @@ export default async function TeamPage({
   if (isNaN(teamId) || teamId < 1) notFound();
   const team = getTeamMeta(teamId);
 
-  let roster: any[] = [];
-  let schedule: any[] = [];
+  let roster: RosterPlayer[] = [];
+  let schedule: ScheduleGame[] = [];
 
   const [rosterResult, scheduleResult] = await Promise.allSettled([
     getTeamRoster(teamId),
@@ -50,17 +51,17 @@ export default async function TeamPage({
   if (scheduleResult.status === "rejected") console.error(`[TeamPage] Failed to fetch schedule for team ${teamId}:`, scheduleResult.reason);
 
   // Separate roster by position
-  const forwards = roster.filter((p: any) =>
+  const forwards = roster.filter((p: RosterPlayer) =>
     ["C", "LW", "RW", "F"].includes(p.position?.toUpperCase())
   );
   const defense = roster.filter(
-    (p: any) => p.position?.toUpperCase() === "D"
+    (p: RosterPlayer) => p.position?.toUpperCase() === "D"
   );
   const goalies = roster.filter(
-    (p: any) => p.position?.toUpperCase() === "G"
+    (p: RosterPlayer) => p.position?.toUpperCase() === "G"
   );
   const other = roster.filter(
-    (p: any) =>
+    (p: RosterPlayer) =>
       !["C", "LW", "RW", "F", "D", "G"].includes(p.position?.toUpperCase())
   );
 
@@ -69,7 +70,7 @@ export default async function TeamPage({
     players,
   }: {
     title: string;
-    players: any[];
+    players: RosterPlayer[];
   }) {
     if (players.length === 0) return null;
     return (
@@ -90,7 +91,7 @@ export default async function TeamPage({
               </tr>
             </thead>
             <tbody>
-              {players.map((p: any, i: number) => (
+              {players.map((p: RosterPlayer, i: number) => (
                 <tr key={p.player_id ?? i}>
                   <td className="font-mono text-sm text-gray-400">
                     {p.tp_jersey_number ?? p.jersey_number ?? "—"}
@@ -144,6 +145,7 @@ export default async function TeamPage({
             <p className="text-sm text-gray-400 mt-1">
               2025–2026 PWHL Season
             </p>
+            <DataFreshness renderedAt={Date.now()} revalidateSeconds={300} />
           </div>
         </div>
 
@@ -200,7 +202,7 @@ export default async function TeamPage({
               </Link>
             </div>
             <div className="p-3 max-h-[600px] overflow-y-auto space-y-1">
-              {schedule.slice(0, 30).map((g: any, i: number) => {
+              {schedule.slice(0, 30).map((g: ScheduleGame, i: number) => {
                 // statviewfeed schedule uses city names, not IDs
                 const homeCity = g.home_team_city ?? "";
                 const visitCity = g.visiting_team_city ?? "";
@@ -215,13 +217,13 @@ export default async function TeamPage({
                   ?.toLowerCase()
                   ?.includes("final");
                 const date = formatDate(
-                  g.date_with_day ?? g.game_date ?? ""
+                  g.date_with_day || String(g.game_date ?? "")
                 );
 
                 return (
                   <Link
                     key={i}
-                    href={`/game/${g.game_id ?? g.ID}`}
+                    href={`/game/${g.game_id ?? g.id ?? String(g.ID ?? "")}`}
                     className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-rink-800/40 transition-colors"
                   >
                     <div className="flex items-center gap-2">

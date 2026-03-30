@@ -3,6 +3,7 @@ import { getTeamMeta } from "@/lib/teams";
 import { TeamFilter } from "@/components/team-filter";
 import { val, playerName } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import Link from "next/link";
 
 export const revalidate = 300;
@@ -12,7 +13,7 @@ export const metadata = {
   description: "PWHL player statistics for the 2025-2026 season.",
 };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { PlayerStatsRow } from "@/lib/types";
 
 export default async function StatsPage({
   searchParams,
@@ -23,7 +24,7 @@ export default async function StatsPage({
   const view = resolvedParams.view === "goalies" ? "goalies" : "skaters";
   const teamFilter = resolvedParams.team ? parseInt(resolvedParams.team) : null;
 
-  let players: any[] = [];
+  let players: PlayerStatsRow[] = [];
 
   let fetchError = false;
   try {
@@ -50,8 +51,8 @@ export default async function StatsPage({
     // Filter by team_id or team_code
     const filterTeam = getTeamMeta(teamFilter);
     players = players.filter(
-      (p: any) =>
-        parseInt(p.team_id) === teamFilter ||
+      (p: PlayerStatsRow) =>
+        parseInt(p.team_id ?? "") === teamFilter ||
         p.team_code?.toUpperCase() === filterTeam.abbr
     );
   }
@@ -99,6 +100,7 @@ export default async function StatsPage({
           <p className="text-sm text-gray-400 mt-1">
             2025–2026 PWHL Regular Season
           </p>
+          <DataFreshness renderedAt={Date.now()} revalidateSeconds={300} />
         </div>
       </div>
 
@@ -146,7 +148,7 @@ export default async function StatsPage({
               </tr>
             </thead>
             <tbody>
-              {players.map((p: any, i: number) => {
+              {players.map((p: PlayerStatsRow, i: number) => {
                 const team = getTeamMeta(p.team_id ?? p.team_code ?? 0);
                 const name = playerName(p);
 

@@ -1,6 +1,7 @@
 import { getStandings } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
@@ -11,10 +12,10 @@ export const metadata = {
   description: "PWHL league standings for the 2025-2026 season.",
 };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { StandingsRow } from "@/lib/types";
 
 export default async function StandingsPage() {
-  let standings: any[] = [];
+  let standings: StandingsRow[] = [];
   let fetchError = false;
 
   try {
@@ -57,6 +58,7 @@ export default async function StandingsPage() {
         <p className="text-sm text-gray-400 mt-1">
           2025–2026 PWHL Regular Season &middot; 3-2-1-0 points system
         </p>
+        <DataFreshness renderedAt={Date.now()} revalidateSeconds={120} />
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -72,7 +74,7 @@ export default async function StandingsPage() {
               </tr>
             </thead>
             <tbody>
-              {standings.map((row: any, i: number) => {
+              {standings.map((row: StandingsRow, i: number) => {
                 const team = getTeamMeta(row.team_id ?? 0);
                 const inPlayoffSpot = i < 4;
                 const diff =

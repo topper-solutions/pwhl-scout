@@ -3,6 +3,7 @@ import { getTeamMeta } from "@/lib/teams";
 import { TeamFilter } from "@/components/team-filter";
 import { formatDate, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
@@ -13,7 +14,7 @@ export const metadata = {
   description: "PWHL game schedule for the 2025-2026 season.",
 };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { ScheduleGame } from "@/lib/types";
 
 export default async function SchedulePage({
   searchParams,
@@ -21,7 +22,7 @@ export default async function SchedulePage({
   searchParams: Promise<{ team?: string }>;
 }) {
   const resolvedParams = await searchParams;
-  let games: any[] = [];
+  let games: ScheduleGame[] = [];
 
   const teamFilter = resolvedParams.team ? parseInt(resolvedParams.team) : null;
 
@@ -48,9 +49,9 @@ export default async function SchedulePage({
 
   // Group by month using ISO date (date_played: "2025-11-21")
   const monthKeyCache: Record<string, string> = {};
-  const byMonth: Record<string, any[]> = {};
+  const byMonth: Record<string, ScheduleGame[]> = {};
   for (const game of games) {
-    const isoDate = game.date_played ?? game.game_date ?? "";
+    const isoDate = game.date_played || String(game.game_date ?? "");
     const ym = isoDate?.slice(0, 7) ?? ""; // "2025-11"
     let monthKey = "Unknown";
     if (ym && ym.includes("-")) {
@@ -75,6 +76,7 @@ export default async function SchedulePage({
           <p className="text-sm text-gray-400 mt-1">
             2025–2026 PWHL Regular Season
           </p>
+          <DataFreshness renderedAt={Date.now()} revalidateSeconds={300} />
         </div>
 
         <TeamFilter baseHref="/schedule" activeTeamId={teamFilter} />
@@ -98,14 +100,14 @@ export default async function SchedulePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {monthGames.map((g: any, i: number) => {
+                  {monthGames.map((g: ScheduleGame, i: number) => {
                     const home = getTeamMeta(g.home_team ?? 0);
                     const away = getTeamMeta(g.visiting_team ?? 0);
                     const status = g.game_status ?? "Scheduled";
                     const isFinal = isGameFinal(status);
-                    const gameId = g.game_id ?? g.ID;
+                    const gameId = g.game_id ?? g.id ?? String(g.ID ?? "");
                     const date = formatDate(
-                      g.date_with_day ?? g.game_date ?? ""
+                      g.date_with_day || String(g.game_date ?? "")
                     );
                     const time = g.schedule_time ?? "";
 
