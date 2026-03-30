@@ -5,17 +5,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Start dev server on port 3000
-npm run build        # Production build (also runs type checking + linting)
-npm run lint         # ESLint only
-npm audit            # Check for dependency vulnerabilities (should return 0)
+npm run dev            # Start dev server on port 3000
+npm run build          # Production build (type checking + linting + static pages)
+npm run lint           # ESLint only
+npm test               # Run all tests (vitest run)
+npm run test:watch     # Watch mode
+npm run test:coverage  # Coverage report (v8)
+npm audit              # Check for dependency vulnerabilities (should return 0)
 ```
 
-No test framework is configured yet. `npm run build` is the primary verification step — it compiles TypeScript, runs ESLint, and generates static pages.
+Tests use **Vitest 4** with React Testing Library and jsdom. 93 tests across `src/lib/*.test.ts` and `src/components/error-banner.test.tsx` (~92% statement coverage). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
 
 ## Architecture
 
-Next.js 15 App Router project (React 19, TypeScript, Tailwind CSS) that tracks the Professional Women's Hockey League. All pages are **server components** — no `"use client"` except `error.tsx`. Data is fetched server-side so API credentials never reach the client bundle.
+Next.js 15 App Router project (React 19, TypeScript, Tailwind CSS) that tracks the Professional Women's Hockey League. All pages are **server components**. Client components (`"use client"`) are limited to `error.tsx` and `live-scoreboard.tsx`. Data is fetched server-side so API credentials never reach the client bundle.
 
 ### Data flow
 
@@ -33,13 +36,22 @@ Two upstream APIs, both requiring credentials as URL query parameters (inherent 
 - **HockeyTech** — schedules, scores, standings, stats, game summaries. Responses are JSONP-wrapped (either `Modulekit.callback({...})` or `([{...}])`) and parsed by `parseHockeyTechResponse()`.
 - **Firebase** — real-time game clock, live goals, penalties, shots during active games.
 
-`extractSiteKit(data, viewKey)` is the critical abstraction — it handles four different response wrapper formats:
+`extractSiteKit(data, viewKey)` is the critical abstraction — it handles five different response wrapper formats:
 1. `{SiteKit: {ViewName: data}}` — most modulekit endpoints
 2. `{GC: {ViewName: data}}` — game center endpoints (summary, PBP)
 3. `[{sections: [{data: [{row: {...}}]}]}]` — statviewfeed endpoints (player stats, team schedule)
-4. Raw data — fallback
+4. `[data]` — array-wrapped responses
+5. Raw data — fallback
 
 All fetch calls have a 10-second `AbortSignal.timeout`. ISR revalidation is set per page (60s for live scores, 120-300s for static data).
+
+### Live game updates (`src/components/live-scoreboard.tsx`, `src/app/api/live/route.ts`)
+
+Real-time updates during active games use Firebase Realtime Database via Server-Sent Events (SSE):
+1. `/api/live` route proxies the Firebase SSE stream, keeping credentials server-side
+2. `LiveScoreboard` client component connects via `EventSource`, stores the full Firebase tree in a `useRef`, and merges PATCH events incrementally
+3. `extractGameData()` parses clock, goals, shots, and penalties from the Firebase tree
+4. Penalty tracking uses **absolute game seconds** (`(period-1) × 1200 + elapsed`) for correct cross-period carry-over, and checks power-play goals to terminate minor penalties early
 
 ### Team metadata (`src/lib/teams.ts`)
 
@@ -47,11 +59,11 @@ All fetch calls have a 10-second `AbortSignal.timeout`. ISR revalidation is set 
 
 ### Error handling pattern
 
-Pages use try-catch around API calls with `console.error("[PageName] ...")` logging and render `<ErrorBanner>` on failure. This distinguishes "no data" from "API is down." Global `error.tsx` catches unhandled render errors. `not-found.tsx` handles invalid route params.
+Pages use `Promise.allSettled` for parallel API calls, log failures with `console.error("[PageName] ...")`, and render `<ErrorBanner>` on failure. This distinguishes "no data" from "API is down." Global `error.tsx` catches unhandled render errors. `not-found.tsx` handles invalid route params.
 
 ### CSS component classes (`src/app/globals.css`)
 
-Tailwind `@layer components` defines reusable classes: `.stat-table` (data tables), `.glass-card` (frosted glass panels), `.team-badge` (colored team chips), `.nav-link`, `.live-dot`, `.page-title`. Team colors are applied dynamically via inline `style` attributes using values from `teams.ts`.
+Tailwind `@layer components` defines reusable classes: `.stat-table` (data tables), `.glass-card` (frosted glass panels), `.team-badge` (colored team chips), `.nav-link`, `.live-dot`, `.page-title`, `.text-live` (red pulse for live indicators). Team colors are applied dynamically via inline `style` attributes using values from `teams.ts`.
 
 ### Fonts
 
@@ -70,9 +82,31 @@ FIREBASE_API_KEY
 
 These keys are publicly visible in thepwhl.com's client-side JavaScript. They are kept in env vars for rotation support, not secrecy. Missing vars are logged at startup but don't prevent boot (pages will show error banners instead).
 
+### Reusable components
+
+- `TeamLogo` — renders team logo via `next/image` (5 sizes: xs/sm/md/lg/xl) with colored abbreviation fallback
+- `ErrorBanner` — red-tinted glass card for API failure messages
+- `LiveScoreboard` — client component for real-time game score, clock, shots, and penalty badges
+
+### Types (`src/lib/types.ts`)
+
+TypeScript interfaces for all API response shapes: `ScorebarGame`, `StandingsRow`, `PlayerStatsRow`, `ScheduleGame`, `GameSummary`, `GameGoal`, `GamePenalty`, `GameMvp`, `RosterPlayer`, `PbpEvent`. All include `[key: string]: unknown` for API schema flexibility.
+
+## Testing
+
+Vitest 4 with jsdom and React Testing Library. Config in `vitest.config.ts` with separate `tsconfig.test.json` to avoid polluting the Next.js build with test types. Test env vars are set in `vitest.config.ts` `test.env` section (module-level `process.env` reads happen at import time, before `vi.stubEnv` runs).
+
+Test files are colocated with source:
+- `src/lib/utils.test.ts` — playerName, isGameLive/Final, val, formatDate
+- `src/lib/teams.test.ts` — getTeamMeta (ID/abbr/city/fallback), getTeamByAbbr, TEAM_LIST
+- `src/lib/pbp-labels.test.ts` — all event type labels + fallback
+- `src/lib/api.test.ts` — extractSiteKit (5 formats), parseHockeyTechResponse (JSONP), fetch functions with mocked fetch
+- `src/components/error-banner.test.tsx` — render + content assertions
+
 ## Security
 
 - All security headers configured in `next.config.mjs` (CSP, HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy)
 - Branch protection on `main`: required reviews, signed commits, enforce admins, linear history, no force push
 - Dependency review GitHub Action runs on all PRs
 - `npm audit` should always return 0 vulnerabilities
+- Team logos loaded via `next/image` with `remotePatterns` restricted to `assets.leaguestat.com/pwhl/logos/`
