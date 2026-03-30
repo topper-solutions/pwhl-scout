@@ -1,6 +1,7 @@
 # PWHL Scout
 
-[![CI](https://github.com/topper-solutions/pwhl-scout/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/topper-solutions/pwhl-scout/actions/workflows/dependency-review.yml)
+[![CI](https://github.com/topper-solutions/pwhl-scout/actions/workflows/ci.yml/badge.svg)](https://github.com/topper-solutions/pwhl-scout/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/murphy-platforms/8e2b3b269fe2a325c4bf2a222685a573/raw/pwhl-scout-coverage.json)](https://github.com/topper-solutions/pwhl-scout/actions/workflows/ci.yml)
 
 Unofficial stats tracker for the Professional Women's Hockey League. Live scores, standings, player stats, schedules, and game details with real-time updates during active games.
 
@@ -119,7 +120,7 @@ npm run test:watch     # Watch mode
 npm run test:coverage  # Coverage report (v8)
 ```
 
-93 tests across 5 test files with ~92% statement coverage. Tests use Vitest 4 with React Testing Library and jsdom.
+97 tests across 5 test files with ~95% statement coverage and 100% function coverage. Tests use Vitest 4 with React Testing Library and jsdom.
 
 ## Environment Variables
 
