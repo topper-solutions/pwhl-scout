@@ -197,7 +197,8 @@ export function LiveScoreboard({
 
   useEffect(() => {
     if (!isLive) return;
-    const es = new EventSource("/api/live");
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const es = new EventSource(`${basePath}/api/live`);
 
     es.addEventListener("put", (event: MessageEvent) => {
       try {
