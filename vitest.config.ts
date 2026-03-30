@@ -18,6 +18,10 @@ export default defineConfig({
     typecheck: {
       tsconfig: "./tsconfig.test.json",
     },
+    coverage: {
+      reporter: ["text", "json-summary"],
+      reportOnFailure: true,
+    },
     env: {
       HOCKEYTECH_API_KEY: "test-key",
       HOCKEYTECH_CLIENT_CODE: "pwhl",

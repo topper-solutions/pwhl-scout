@@ -16,13 +16,17 @@ import {
   getTeamSchedule,
   getStandings,
   getGameSummary,
+  getGameClock,
   getPlayByPlay,
+  getGamePreview,
   getSkaterStats,
   getGoalieStats,
   getTopScorers,
   getTeamRoster,
   getTeams,
   getSeasons,
+  getPlayerProfile,
+  getPlayerGameByGame,
   getLiveData,
   getLiveClock,
   getLiveGoals,
@@ -293,6 +297,42 @@ describe("HockeyTech API functions", () => {
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Roster", roster)));
       const result = await getTeamRoster(3);
       expect(result).toEqual([{ first_name: "A" }, { first_name: "B" }]);
+    });
+  });
+
+  describe("getGameClock", () => {
+    it("returns raw clock data", async () => {
+      const clock = { GC: { Clock: { Minutes: "12", Seconds: "30" } } };
+      vi.stubGlobal("fetch", mockFetchResponse(JSON.stringify(clock)));
+      const result = await getGameClock(302);
+      expect(result).toEqual(clock);
+    });
+  });
+
+  describe("getGamePreview", () => {
+    it("returns raw preview data", async () => {
+      const preview = { GC: { Preview: { venue: "Place Bell" } } };
+      vi.stubGlobal("fetch", mockFetchResponse(JSON.stringify(preview)));
+      const result = await getGamePreview(302);
+      expect(result).toEqual(preview);
+    });
+  });
+
+  describe("getPlayerProfile", () => {
+    it("returns raw player profile data", async () => {
+      const profile = { SiteKit: { Player: { name: "Marie-Philip Poulin" } } };
+      vi.stubGlobal("fetch", mockFetchResponse(JSON.stringify(profile)));
+      const result = await getPlayerProfile(42);
+      expect(result).toEqual(profile);
+    });
+  });
+
+  describe("getPlayerGameByGame", () => {
+    it("returns raw game-by-game data", async () => {
+      const gbg = { SiteKit: { Player: { games: [{ game_id: "302" }] } } };
+      vi.stubGlobal("fetch", mockFetchResponse(JSON.stringify(gbg)));
+      const result = await getPlayerGameByGame(42);
+      expect(result).toEqual(gbg);
     });
   });
 

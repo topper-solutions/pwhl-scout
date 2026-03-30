@@ -14,7 +14,7 @@ npm run test:coverage  # Coverage report (v8)
 npm audit              # Check for dependency vulnerabilities (should return 0)
 ```
 
-Tests use **Vitest 4** with React Testing Library and jsdom. 93 tests across `src/lib/*.test.ts` and `src/components/error-banner.test.tsx` (~92% statement coverage). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
+Tests use **Vitest 4** with React Testing Library and jsdom. 97 tests across `src/lib/*.test.ts` and `src/components/error-banner.test.tsx` (~95% statement coverage, 100% function coverage). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
 
 ## Architecture
 
