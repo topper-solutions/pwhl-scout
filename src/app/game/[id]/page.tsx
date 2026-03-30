@@ -17,7 +17,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   return {
-    title: `Game #${id} | PWHL Scout`,
+    title: `Game #${id} | PWHL Gameday`,
     description: `PWHL game details and box score for game ${id}.`,
   };
 }
