@@ -30,25 +30,43 @@ function validateEnv() {
 }
 validateEnv();
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type {
+  ScorebarGame,
+  StandingsRow,
+  PlayerStatsRow,
+  ScheduleGame,
+  GameSummary,
+  PbpEvent,
+  RosterPlayer,
+} from "./types";
 
 // Extract data from HockeyTech SiteKit wrapper.
 // Response shape is either {SiteKit: {ViewName: data}} or just raw data.
-export function extractSiteKit(data: any, viewKey: string): any {
+export function extractSiteKit(data: unknown, viewKey: string): unknown {
   if (!data) return null;
+  const d = data as Record<string, unknown>;
   // Direct SiteKit wrapper
-  if (data?.SiteKit?.[viewKey] !== undefined) return data.SiteKit[viewKey];
+  const siteKit = d.SiteKit as Record<string, unknown> | undefined;
+  if (siteKit?.[viewKey] !== undefined) return siteKit[viewKey];
   // Maybe it's already the data
-  if (data?.[viewKey] !== undefined) return data[viewKey];
+  if (d[viewKey] !== undefined) return d[viewKey];
   // Array wrapper (some endpoints)
-  if (Array.isArray(data) && data[0]?.SiteKit?.[viewKey] !== undefined) {
-    return data[0].SiteKit[viewKey];
+  if (Array.isArray(data)) {
+    const first = data[0] as Record<string, unknown> | undefined;
+    const firstSiteKit = first?.SiteKit as Record<string, unknown> | undefined;
+    if (firstSiteKit?.[viewKey] !== undefined) return firstSiteKit[viewKey];
   }
   // GC wrapper (game center endpoints)
-  if (data?.GC?.[viewKey] !== undefined) return data.GC[viewKey];
+  const gc = d.GC as Record<string, unknown> | undefined;
+  if (gc?.[viewKey] !== undefined) return gc[viewKey];
   // Sections-based response (statviewfeed endpoints): [{sections: [{data: [{row: {...}}]}]}]
-  if (Array.isArray(data) && data[0]?.sections?.[0]?.data) {
-    return data[0].sections[0].data.map((d: any) => d.row ?? d);
+  if (Array.isArray(data)) {
+    const first = data[0] as Record<string, unknown> | undefined;
+    const sections = first?.sections as Array<Record<string, unknown>> | undefined;
+    const sectionData = sections?.[0]?.data as Array<Record<string, unknown>> | undefined;
+    if (sectionData) {
+      return sectionData.map((item) => (item.row as Record<string, unknown>) ?? item);
+    }
   }
   return data;
 }
@@ -72,7 +90,7 @@ export function parseHockeyTechResponse(body: string) {
   return JSON.parse(trimmed);
 }
 
-function ensureArray(value: unknown): any[] {
+function ensureArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
@@ -109,82 +127,89 @@ async function firebaseFetch(path: string) {
 }
 
 // --- Scorebar ---
-export async function getScorebar(daysBack = 1, daysAhead = 1) {
+export async function getScorebar(daysBack = 1, daysAhead = 1): Promise<ScorebarGame[]> {
   const data = await htFetch(
     `feed=modulekit&view=scorebar&numberofdaysback=${daysBack}&numberofdaysahead=${daysAhead}`
   );
-  return ensureArray(extractSiteKit(data, "Scorebar"));
+  return ensureArray(extractSiteKit(data, "Scorebar")) as ScorebarGame[];
 }
 
 // --- Schedule ---
-export async function getSeasonSchedule(seasonId = CURRENT_SEASON_ID) {
+export async function getSeasonSchedule(seasonId = CURRENT_SEASON_ID): Promise<ScheduleGame[]> {
   const data = await htFetch(`feed=modulekit&view=schedule&season_id=${seasonId}`);
-  return ensureArray(extractSiteKit(data, "Schedule"));
+  return ensureArray(extractSiteKit(data, "Schedule")) as ScheduleGame[];
 }
 
 export async function getTeamSchedule(
   teamId: number,
   seasonId = CURRENT_SEASON_ID
-) {
+): Promise<ScheduleGame[]> {
   const data = await htFetch(
     `feed=statviewfeed&view=schedule&team=${teamId}&season=${seasonId}&month=-1`
   );
-  return ensureArray(extractSiteKit(data, "Schedule"));
+  return ensureArray(extractSiteKit(data, "Schedule")) as ScheduleGame[];
 }
 
 // --- Standings ---
-export async function getStandings(seasonId = CURRENT_SEASON_ID) {
+export async function getStandings(seasonId = CURRENT_SEASON_ID): Promise<StandingsRow[]> {
   const data = await htFetch(
     `feed=modulekit&view=statviewtype&stat=conference&type=standings&season_id=${seasonId}`
   );
-  return ensureArray(extractSiteKit(data, "Statviewtype")).filter((r: any) => r.team_id);
+  return ensureArray(extractSiteKit(data, "Statviewtype")).filter(
+    (r): r is StandingsRow => typeof r === "object" && r !== null && "team_id" in r
+  );
 }
 
 // --- Game Detail ---
-export async function getGameSummary(gameId: number) {
+export async function getGameSummary(gameId: number): Promise<GameSummary> {
   const data = await htFetch(
     `feed=gc&tab=gamesummary&game_id=${gameId}&site_id=0&lang=en`
   );
-  return extractSiteKit(data, "Gamesummary");
+  return extractSiteKit(data, "Gamesummary") as GameSummary;
 }
 
-export async function getGameClock(gameId: number) {
+export async function getGameClock(gameId: number): Promise<unknown> {
   return htFetch(`feed=gc&tab=clock&game_id=${gameId}`);
 }
 
-export async function getPlayByPlay(gameId: number) {
+export async function getPlayByPlay(gameId: number): Promise<PbpEvent[]> {
   const data = await htFetch(`feed=gc&tab=pxpverbose&game_id=${gameId}`);
-  return ensureArray(extractSiteKit(data, "Pxpverbose"));
+  return ensureArray(extractSiteKit(data, "Pxpverbose")) as PbpEvent[];
 }
 
-export async function getGamePreview(gameId: number) {
+export async function getGamePreview(gameId: number): Promise<unknown> {
   return htFetch(`feed=gc&tab=preview&game_id=${gameId}`);
 }
 
 // --- Player Stats ---
-export async function getSkaterStats(seasonId = CURRENT_SEASON_ID) {
+export async function getSkaterStats(seasonId = CURRENT_SEASON_ID): Promise<PlayerStatsRow[]> {
   const data = await htFetch(
     `feed=statviewfeed&view=players&season=${seasonId}&team=all&position=skaters&rookies=0&statsType=standard&rosterstatus=undefined&site_id=0&league_id=1&lang=en&division=-1&conference=-1&limit=500&sort=points`
   );
-  return ensureArray(extractSiteKit(data, "Players"));
+  return ensureArray(extractSiteKit(data, "Players")) as PlayerStatsRow[];
 }
 
-export async function getGoalieStats(seasonId = CURRENT_SEASON_ID) {
+export async function getGoalieStats(seasonId = CURRENT_SEASON_ID): Promise<PlayerStatsRow[]> {
   const data = await htFetch(
     `feed=statviewfeed&view=players&season=${seasonId}&team=all&position=goalies&rookies=0&statsType=standard&rosterstatus=undefined&site_id=0&first=0&limit=500&sort=gaa&league_id=1&lang=en&division=-1&conference=-1&qualified=all`
   );
-  return ensureArray(extractSiteKit(data, "Players"));
+  return ensureArray(extractSiteKit(data, "Players")) as PlayerStatsRow[];
 }
 
-export async function getTopScorers(seasonId = CURRENT_SEASON_ID) {
+export async function getTopScorers(seasonId = CURRENT_SEASON_ID): Promise<PlayerStatsRow[]> {
   const data = await htFetch(
     `feed=modulekit&view=statviewtype&type=topscorers&first=0&limit=100&season_id=${seasonId}`
   );
-  return ensureArray(extractSiteKit(data, "Statviewtype")).filter((r: any) => r.player_name || r.name || r.first_name);
+  return ensureArray(extractSiteKit(data, "Statviewtype")).filter(
+    (r): r is PlayerStatsRow => {
+      const row = r as Record<string, unknown>;
+      return !!(row.player_name || row.name || row.first_name);
+    }
+  );
 }
 
 // --- Teams ---
-export async function getTeams(seasonId = CURRENT_SEASON_ID) {
+export async function getTeams(seasonId = CURRENT_SEASON_ID): Promise<unknown> {
   const data = await htFetch(
     `feed=modulekit&view=teamsbyseason&season_id=${seasonId}`
   );
@@ -194,21 +219,25 @@ export async function getTeams(seasonId = CURRENT_SEASON_ID) {
 export async function getTeamRoster(
   teamId: number,
   seasonId = CURRENT_SEASON_ID
-) {
+): Promise<RosterPlayer[]> {
   const data = await htFetch(
     `feed=modulekit&view=roster&team_id=${teamId}&season_id=${seasonId}`
   );
   const raw = ensureArray(extractSiteKit(data, "Roster"));
   if (raw.length === 0) return [];
-  let roster = raw.filter((p: any) => typeof p === "object" && p !== null && !Array.isArray(p) && p.first_name);
+  const roster = raw.filter(
+    (p): p is Record<string, unknown> =>
+      typeof p === "object" && p !== null && !Array.isArray(p) && "first_name" in p
+  );
   if (roster.length > 0 && roster[0]?.sections) {
-    roster = roster[0].sections.flatMap((s: any) => s.data ?? []);
+    const sections = roster[0].sections as Array<Record<string, unknown>>;
+    return sections.flatMap((s) => (s.data ?? []) as RosterPlayer[]);
   }
-  return roster;
+  return roster as unknown as RosterPlayer[];
 }
 
 // --- Players ---
-export async function getPlayerProfile(playerId: number) {
+export async function getPlayerProfile(playerId: number): Promise<unknown> {
   return htFetch(
     `feed=modulekit&view=player&category=profile&player_id=${playerId}`
   );
@@ -217,34 +246,34 @@ export async function getPlayerProfile(playerId: number) {
 export async function getPlayerGameByGame(
   playerId: number,
   seasonId = CURRENT_SEASON_ID
-) {
+): Promise<unknown> {
   return htFetch(
     `feed=modulekit&view=player&category=gamebygame&season_id=${seasonId}&player_id=${playerId}`
   );
 }
 
 // --- Seasons ---
-export async function getSeasons() {
+export async function getSeasons(): Promise<unknown> {
   return htFetch("feed=modulekit&view=seasons");
 }
 
 // --- Firebase Live ---
-export async function getLiveData() {
+export async function getLiveData(): Promise<unknown> {
   return firebaseFetch("");
 }
 
-export async function getLiveClock() {
+export async function getLiveClock(): Promise<unknown> {
   return firebaseFetch("/runningclock");
 }
 
-export async function getLiveGoals() {
+export async function getLiveGoals(): Promise<unknown> {
   return firebaseFetch("/goals");
 }
 
-export async function getLivePenalties() {
+export async function getLivePenalties(): Promise<unknown> {
   return firebaseFetch("/penalties");
 }
 
-export async function getLiveShots() {
+export async function getLiveShots(): Promise<unknown> {
   return firebaseFetch("/shotssummary");
 }

@@ -11,10 +11,10 @@ export const metadata = {
   description: "PWHL league standings for the 2025-2026 season.",
 };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { StandingsRow } from "@/lib/types";
 
 export default async function StandingsPage() {
-  let standings: any[] = [];
+  let standings: StandingsRow[] = [];
   let fetchError = false;
 
   try {
@@ -72,7 +72,7 @@ export default async function StandingsPage() {
               </tr>
             </thead>
             <tbody>
-              {standings.map((row: any, i: number) => {
+              {standings.map((row: StandingsRow, i: number) => {
                 const team = getTeamMeta(row.team_id ?? 0);
                 const inPlayoffSpot = i < 4;
                 const diff =

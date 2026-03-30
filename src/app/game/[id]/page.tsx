@@ -22,17 +22,18 @@ export async function generateMetadata({
   };
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { GameGoal, GamePenalty, GameMvp, PbpEvent } from "@/lib/types";
+import type { TeamMeta } from "@/lib/teams";
 
-function GoalRow({ goal }: { goal: any }) {
-  const team = getTeamMeta(goal.team_id ?? goal.team ?? 0);
+function GoalRow({ goal }: { goal: GameGoal }) {
+  const team = getTeamMeta(goal.team_id || String(goal.team ?? 0));
   const scorerName =
     typeof goal.goal_scorer === "object"
-      ? playerName(goal.goal_scorer)
-      : (goal.goal_scorer ?? "Goal");
+      ? playerName(goal.goal_scorer as Record<string, unknown>)
+      : String(goal.goal_scorer ?? "Goal");
   const assists = [goal.assist1_player, goal.assist2_player]
-    .filter((a) => a?.player_id)
-    .map((a) => playerName(a));
+    .filter((a): a is NonNullable<typeof a> => !!a?.player_id)
+    .map((a) => playerName(a as Record<string, unknown>));
 
   const isPP = goal.power_play === "1";
   const isSH = goal.short_handed === "1";
@@ -81,11 +82,11 @@ function GoalRow({ goal }: { goal: any }) {
   );
 }
 
-function PenaltyRow({ pen }: { pen: any }) {
-  const team = getTeamMeta(pen.team_id ?? pen.team ?? 0);
+function PenaltyRow({ pen }: { pen: GamePenalty }) {
+  const team = getTeamMeta(pen.team_id || String(pen.team ?? 0));
   const penName = pen.player_penalized_info
-    ? playerName(pen.player_penalized_info)
-    : (pen.player_penalized_name ?? "Player");
+    ? playerName(pen.player_penalized_info as Record<string, unknown>)
+    : String(pen.player_penalized_name ?? "Player");
 
   return (
     <div className="flex items-start gap-3 py-2 border-b border-rink-800/30 last:border-0">
@@ -111,9 +112,9 @@ function Linescore({
   awayScore,
   homeScore,
 }: {
-  goals: any[];
-  awayTeam: any;
-  homeTeam: any;
+  goals: GameGoal[];
+  awayTeam: TeamMeta;
+  homeTeam: TeamMeta;
   awayScore: number | string;
   homeScore: number | string;
 }) {
@@ -210,24 +211,24 @@ export default async function GamePage({
   }
 
   const homeTeam = getTeamMeta(
-    summary.home?.team_id ?? summary.home?.id ?? summary.home_team ?? 0
+    summary.home?.team_id || summary.home?.id || String(summary.home_team ?? 0)
   );
   const awayTeam = getTeamMeta(
-    summary.visitor?.team_id ?? summary.visitor?.id ?? summary.visiting_team ?? 0
+    summary.visitor?.team_id || summary.visitor?.id || String(summary.visiting_team ?? 0)
   );
-  const homeScore = summary.totalGoals?.home ?? summary.home_goal_count ?? "0";
-  const awayScore = summary.totalGoals?.visitor ?? summary.visiting_goal_count ?? "0";
-  const status = summary.status_value ?? summary.game_status ?? "Final";
+  const homeScore = summary.totalGoals?.home ?? String(summary.home_goal_count ?? "0");
+  const awayScore = summary.totalGoals?.visitor ?? String(summary.visiting_goal_count ?? "0");
+  const status = summary.status_value || String(summary.game_status ?? "Final");
   const gameDate = summary.game_date ?? "";
   const venue = summary.venue ?? "";
   const live = isGameLive(status);
   const final_ = isGameFinal(status);
 
-  const goals: any[] = summary.goals ?? [];
-  const penalties: any[] = summary.penalties ?? [];
-  const threeStars: any[] = (summary.mvps ?? summary.three_stars ?? []).filter(Boolean);
+  const goals: GameGoal[] = summary.goals ?? [];
+  const penalties: GamePenalty[] = summary.penalties ?? [];
+  const threeStars: GameMvp[] = ([...(summary.mvps ?? (summary.three_stars as GameMvp[] | undefined) ?? [])] as GameMvp[]).filter(Boolean);
 
-  const goalsByPeriod: Record<string, any[]> = {};
+  const goalsByPeriod: Record<string, GameGoal[]> = {};
   for (const g of goals) {
     const period = g.period_id ?? g.period ?? "1";
     const label =
@@ -292,7 +293,7 @@ export default async function GamePage({
                 <h2 className="section-title text-base">Three Stars</h2>
               </div>
               <div className="p-4 space-y-1">
-                {threeStars.map((star: any, i: number) => {
+                {threeStars.map((star: GameMvp, i: number) => {
                   const starTeam =
                     star.home === 1 || star.home === "1" ? homeTeam : awayTeam;
                   const style = starStyles[i] ?? { color: "text-gray-500", glow: "", size: "text-sm", label: "" };
@@ -329,11 +330,13 @@ export default async function GamePage({
           )}
 
           {(summary.shotsByPeriod || summary.totalShots) && (() => {
-            const visitorShots = summary.shotsByPeriod?.visitor ?? {};
-            const homeShots = summary.shotsByPeriod?.home ?? {};
+            const shotsByPeriod = summary.shotsByPeriod as Record<string, Record<string, number>> | undefined;
+            const totalShotsData = summary.totalShots as { visitor: number; home: number } | undefined;
+            const visitorShots: Record<string, number> = shotsByPeriod?.visitor ?? {};
+            const homeShots: Record<string, number> = shotsByPeriod?.home ?? {};
             const periods = Object.keys(visitorShots);
-            const totalVisitor = Number(summary.totalShots?.visitor) || 0;
-            const totalHome = Number(summary.totalShots?.home) || 0;
+            const totalVisitor = Number(totalShotsData?.visitor) || 0;
+            const totalHome = Number(totalShotsData?.home) || 0;
             const totalShots = totalVisitor + totalHome;
             const visitorPct = totalShots > 0 ? (totalVisitor / totalShots) * 100 : 50;
 
@@ -414,7 +417,7 @@ export default async function GamePage({
                     <h3 className="text-xs font-display font-semibold text-ice-dim uppercase tracking-wider mb-2">
                       {period}
                     </h3>
-                    {periodGoals.map((g: any, i: number) => (
+                    {periodGoals.map((g: GameGoal, i: number) => (
                       <GoalRow key={i} goal={g} />
                     ))}
                   </div>
@@ -433,7 +436,7 @@ export default async function GamePage({
                 <h2 className="section-title text-base">Penalties</h2>
               </div>
               <div className="p-4">
-                {penalties.map((pen: any, i: number) => (
+                {penalties.map((pen: GamePenalty, i: number) => (
                   <PenaltyRow key={i} pen={pen} />
                 ))}
               </div>
@@ -453,8 +456,8 @@ export default async function GamePage({
                   </div>
                 </summary>
                 <div className="p-4 max-h-96 overflow-y-auto space-y-0.5">
-                  {pbp.slice(0, 100).map((event: any, i: number) => {
-                    const eventType = val(event, "event", "event_type");
+                  {pbp.slice(0, 100).map((event: PbpEvent, i: number) => {
+                    const eventType = String(val(event, "event", "event_type"));
                     const { label, color } = getPbpLabel(eventType);
                     return (
                       <div

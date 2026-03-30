@@ -4,10 +4,9 @@ import { playerName, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
+import type { ScorebarGame, StandingsRow, PlayerStatsRow } from "@/lib/types";
 
 export const revalidate = 60;
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 function GameStatus({ status }: { status: string }) {
   if (isGameLive(status)) {
@@ -32,16 +31,16 @@ function GameStatus({ status }: { status: string }) {
   );
 }
 
-function ScoreCard({ game }: { game: any }) {
-  const homeTeam = getTeamMeta(game.HomeID ?? game.home_team ?? 0);
-  const awayTeam = getTeamMeta(game.VisitorID ?? game.visiting_team ?? 0);
-  const homeScore = game.HomeGoals ?? game.home_goal_count ?? "—";
-  const awayScore = game.VisitorGoals ?? game.visiting_goal_count ?? "—";
-  const statusStr = game.GameStatusStringLong ?? game.GameStatusString ?? game.game_status ?? "";
+function ScoreCard({ game }: { game: ScorebarGame }) {
+  const homeTeam = getTeamMeta(game.HomeID || String(game.home_team ?? 0));
+  const awayTeam = getTeamMeta(game.VisitorID || String(game.visiting_team ?? 0));
+  const homeScore = game.HomeGoals || String(game.home_goal_count ?? "—");
+  const awayScore = game.VisitorGoals || String(game.visiting_goal_count ?? "—");
+  const statusStr = game.GameStatusStringLong || game.GameStatusString || String(game.game_status ?? "");
   const statusCode = String(game.GameStatus ?? "");
-  const gameId = game.ID ?? game.game_id;
-  const gameDate = game.GameDate ?? game.date_with_day ?? "";
-  const gameTime = game.ScheduledFormattedTime ?? game.schedule_time ?? "";
+  const gameId = game.ID || String(game.game_id ?? "");
+  const gameDate = game.GameDate || String(game.date_with_day ?? "");
+  const gameTime = game.ScheduledFormattedTime || String(game.schedule_time ?? "");
   const live = isGameLive(statusCode || statusStr);
   const final_ = isGameFinal(statusCode || statusStr);
 
@@ -111,7 +110,7 @@ function ScoreCard({ game }: { game: any }) {
   );
 }
 
-function StandingsPreview({ standings }: { standings: any[] }) {
+function StandingsPreview({ standings }: { standings: StandingsRow[] }) {
   return (
     <div className="glass-card overflow-hidden">
       <div className="px-5 py-3 border-b border-rink-700/30 flex items-center justify-between">
@@ -135,7 +134,7 @@ function StandingsPreview({ standings }: { standings: any[] }) {
           </tr>
         </thead>
         <tbody>
-          {standings.slice(0, 8).map((row: any, i: number) => {
+          {standings.slice(0, 8).map((row: StandingsRow, i: number) => {
             const team = getTeamMeta(row.team_id ?? 0);
             return (
               <tr key={i}>
@@ -166,7 +165,7 @@ function StandingsPreview({ standings }: { standings: any[] }) {
   );
 }
 
-function TopScorersPreview({ scorers }: { scorers: any[] }) {
+function TopScorersPreview({ scorers }: { scorers: PlayerStatsRow[] }) {
   return (
     <div className="glass-card overflow-hidden">
       <div className="px-5 py-3 border-b border-rink-700/30 flex items-center justify-between">
@@ -189,7 +188,7 @@ function TopScorersPreview({ scorers }: { scorers: any[] }) {
           </tr>
         </thead>
         <tbody>
-          {scorers.slice(0, 10).map((p: any, i: number) => {
+          {scorers.slice(0, 10).map((p: PlayerStatsRow, i: number) => {
             const team = getTeamMeta(p.team_id ?? 0);
             return (
               <tr key={i}>
@@ -253,8 +252,8 @@ export default async function HomePage() {
         <ErrorBanner message="Unable to load scores. The data source may be temporarily unavailable." />
       ) : scorebar.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {scorebar.map((game: any, i: number) => (
-            <ScoreCard key={game.game_id ?? game.GameID ?? i} game={game} />
+          {scorebar.map((game: ScorebarGame, i: number) => (
+            <ScoreCard key={game.ID ?? i} game={game} />
           ))}
         </div>
       ) : (

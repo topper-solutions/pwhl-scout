@@ -8,7 +8,6 @@ import type { LivePenalty } from "@/lib/extract-game-data";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface LiveState {
   clock: string | null;
@@ -51,7 +50,7 @@ export function LiveScoreboard({
   const homeTeam = getTeamMeta(homeTeamId);
   const awayTeam = getTeamMeta(visitorTeamId);
   const gameKey = String(gameId);
-  const fullDataRef = useRef<any>(null);
+  const fullDataRef = useRef<Record<string, unknown> | null>(null);
 
   const [live, setLive] = useState<LiveState>({
     clock: null, period: null,
@@ -69,7 +68,7 @@ export function LiveScoreboard({
 
     es.addEventListener("put", (event: MessageEvent) => {
       try {
-        const p = JSON.parse(event.data);
+        const p = JSON.parse(event.data) as { path?: string; data?: Record<string, unknown> };
         if (p.path === "/" && p.data) {
           fullDataRef.current = p.data;
           setLive({ ...extractGameData(p.data, gameKey, homeTeamId), connected: true, wasConnected: true });
@@ -79,19 +78,20 @@ export function LiveScoreboard({
 
     es.addEventListener("patch", (event: MessageEvent) => {
       try {
-        const p = JSON.parse(event.data);
+        const p = JSON.parse(event.data) as { path?: string; data?: Record<string, unknown> };
         if (p.data && fullDataRef.current) {
           const path = p.path?.replace(/^\//, "");
           if (path) {
             const parts = path.split("/");
-            let target = fullDataRef.current;
+            let target: Record<string, unknown> = fullDataRef.current;
             for (let i = 0; i < parts.length - 1; i++) {
               if (!target[parts[i]]) target[parts[i]] = {};
-              target = target[parts[i]];
+              target = target[parts[i]] as Record<string, unknown>;
             }
             const last = parts[parts.length - 1];
+            const existing = target[last] as Record<string, unknown> | undefined;
             target[last] = typeof p.data === "object" && p.data !== null
-              ? { ...target[last], ...p.data } : p.data;
+              ? { ...existing, ...p.data } : p.data;
           } else {
             fullDataRef.current = { ...fullDataRef.current, ...p.data };
           }

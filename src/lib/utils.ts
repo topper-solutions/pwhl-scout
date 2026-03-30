@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-export function playerName(p: any): string {
-  if (p?.name) return p.name;
+export function playerName(p: Record<string, unknown> | null | undefined): string {
+  if (p?.name) return String(p.name);
   const full = `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim();
   return full || "Unknown";
 }
@@ -17,9 +15,11 @@ export function isGameFinal(status: string | number): boolean {
   return s === "4" || s.toLowerCase().includes("final");
 }
 
-export function val(obj: any, ...keys: string[]) {
+export function val(obj: Record<string, unknown> | null | undefined, ...keys: string[]): string | number | boolean {
+  if (!obj) return "—";
   for (const k of keys) {
-    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
+    const v = obj[k];
+    if (v !== undefined && v !== null && v !== "") return v as string | number | boolean;
   }
   return "—";
 }
