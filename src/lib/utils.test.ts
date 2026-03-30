@@ -1,4 +1,4 @@
-import { playerName, isGameLive, isGameFinal, val, formatDate } from "./utils";
+import { playerName, isGameLive, isGameFinal, val, formatDate, PERIOD_LABELS, periodLabel } from "./utils";
 
 describe("playerName", () => {
   it("returns name property when present", () => {
@@ -132,5 +132,28 @@ describe("formatDate", () => {
     );
     Date.prototype.toLocaleDateString = origToLocale;
     spy.mockRestore();
+  });
+});
+
+describe("PERIOD_LABELS", () => {
+  it("maps period numbers to short labels", () => {
+    expect(PERIOD_LABELS["1"]).toBe("1st");
+    expect(PERIOD_LABELS["2"]).toBe("2nd");
+    expect(PERIOD_LABELS["3"]).toBe("3rd");
+    expect(PERIOD_LABELS["4"]).toBe("OT");
+  });
+});
+
+describe("periodLabel", () => {
+  it("returns short label for known periods", () => {
+    expect(periodLabel("1")).toBe("1st");
+    expect(periodLabel(2)).toBe("2nd");
+    expect(periodLabel("3")).toBe("3rd");
+    expect(periodLabel(4)).toBe("OT");
+  });
+
+  it("returns fallback for unknown periods", () => {
+    expect(periodLabel("5")).toBe("P5");
+    expect(periodLabel(6)).toBe("P6");
   });
 });

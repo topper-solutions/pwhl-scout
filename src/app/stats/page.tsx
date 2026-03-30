@@ -1,5 +1,6 @@
 import { getSkaterStats, getGoalieStats } from "@/lib/api";
-import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
+import { getTeamMeta } from "@/lib/teams";
+import { TeamFilter } from "@/components/team-filter";
 import { val, playerName } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
 import Link from "next/link";
@@ -126,39 +127,7 @@ export default async function StatsPage({
           </Link>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          <Link
-            href={`/stats?view=${view}`}
-            className={`team-badge border transition-colors ${
-              !teamFilter
-                ? "border-ice/40 bg-rink-700/60 text-white"
-                : "border-rink-700/30 bg-rink-900/40 text-gray-400 hover:text-white"
-            }`}
-          >
-            All
-          </Link>
-          {TEAM_LIST.map((t) => (
-            <Link
-              key={t.id}
-              href={`/stats?view=${view}&team=${t.id}`}
-              className={`team-badge border transition-colors ${
-                teamFilter === t.id
-                  ? "text-white"
-                  : "border-rink-700/30 bg-rink-900/40 text-gray-400 hover:text-white"
-              }`}
-              style={
-                teamFilter === t.id
-                  ? {
-                      borderColor: t.color + "80",
-                      backgroundColor: t.color + "30",
-                    }
-                  : undefined
-              }
-            >
-              {t.abbr}
-            </Link>
-          ))}
-        </div>
+        <TeamFilter baseHref={`/stats?view=${view}`} activeTeamId={teamFilter} />
       </div>
 
       <div className="glass-card overflow-hidden">

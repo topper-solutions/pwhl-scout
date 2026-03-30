@@ -1,6 +1,6 @@
 import { getGameSummary, getPlayByPlay } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
-import { val, playerName, isGameLive, isGameFinal } from "@/lib/utils";
+import { val, playerName, isGameLive, isGameFinal, periodLabel } from "@/lib/utils";
 import { getPbpLabel } from "@/lib/pbp-labels";
 import { LiveScoreboard } from "@/components/live-scoreboard";
 import { TeamLogo } from "@/components/team-logo";
@@ -23,17 +23,6 @@ export async function generateMetadata({
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-const PERIOD_LABELS: Record<string, string> = {
-  "1": "1st",
-  "2": "2nd",
-  "3": "3rd",
-  "4": "OT",
-};
-
-function periodLabel(p: string | number) {
-  return PERIOD_LABELS[String(p)] ?? `P${p}`;
-}
 
 function GoalRow({ goal }: { goal: any }) {
   const team = getTeamMeta(goal.team_id ?? goal.team ?? 0);

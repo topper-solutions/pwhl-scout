@@ -72,6 +72,10 @@ export function parseHockeyTechResponse(body: string) {
   return JSON.parse(trimmed);
 }
 
+function ensureArray(value: unknown): any[] {
+  return Array.isArray(value) ? value : [];
+}
+
 // Rate limiting: Next.js ISR (revalidate: 60) limits upstream calls to at most
 // once per 60 seconds per route per server instance. For higher traffic, consider
 // adding a circuit breaker to stop calling a failing upstream after repeated errors.
@@ -109,15 +113,13 @@ export async function getScorebar(daysBack = 1, daysAhead = 1) {
   const data = await htFetch(
     `feed=modulekit&view=scorebar&numberofdaysback=${daysBack}&numberofdaysahead=${daysAhead}`
   );
-  const raw = extractSiteKit(data, "Scorebar");
-  return Array.isArray(raw) ? raw : [];
+  return ensureArray(extractSiteKit(data, "Scorebar"));
 }
 
 // --- Schedule ---
 export async function getSeasonSchedule(seasonId = CURRENT_SEASON_ID) {
   const data = await htFetch(`feed=modulekit&view=schedule&season_id=${seasonId}`);
-  const raw = extractSiteKit(data, "Schedule");
-  return Array.isArray(raw) ? raw : [];
+  return ensureArray(extractSiteKit(data, "Schedule"));
 }
 
 export async function getTeamSchedule(
@@ -127,8 +129,7 @@ export async function getTeamSchedule(
   const data = await htFetch(
     `feed=statviewfeed&view=schedule&team=${teamId}&season=${seasonId}&month=-1`
   );
-  const raw = extractSiteKit(data, "Schedule");
-  return Array.isArray(raw) ? raw : [];
+  return ensureArray(extractSiteKit(data, "Schedule"));
 }
 
 // --- Standings ---
@@ -136,8 +137,7 @@ export async function getStandings(seasonId = CURRENT_SEASON_ID) {
   const data = await htFetch(
     `feed=modulekit&view=statviewtype&stat=conference&type=standings&season_id=${seasonId}`
   );
-  const raw = extractSiteKit(data, "Statviewtype");
-  return Array.isArray(raw) ? raw.filter((r: any) => r.team_id) : [];
+  return ensureArray(extractSiteKit(data, "Statviewtype")).filter((r: any) => r.team_id);
 }
 
 // --- Game Detail ---
@@ -154,8 +154,7 @@ export async function getGameClock(gameId: number) {
 
 export async function getPlayByPlay(gameId: number) {
   const data = await htFetch(`feed=gc&tab=pxpverbose&game_id=${gameId}`);
-  const raw = extractSiteKit(data, "Pxpverbose");
-  return Array.isArray(raw) ? raw : [];
+  return ensureArray(extractSiteKit(data, "Pxpverbose"));
 }
 
 export async function getGamePreview(gameId: number) {
@@ -167,24 +166,21 @@ export async function getSkaterStats(seasonId = CURRENT_SEASON_ID) {
   const data = await htFetch(
     `feed=statviewfeed&view=players&season=${seasonId}&team=all&position=skaters&rookies=0&statsType=standard&rosterstatus=undefined&site_id=0&league_id=1&lang=en&division=-1&conference=-1&limit=500&sort=points`
   );
-  const raw = extractSiteKit(data, "Players");
-  return Array.isArray(raw) ? raw : [];
+  return ensureArray(extractSiteKit(data, "Players"));
 }
 
 export async function getGoalieStats(seasonId = CURRENT_SEASON_ID) {
   const data = await htFetch(
     `feed=statviewfeed&view=players&season=${seasonId}&team=all&position=goalies&rookies=0&statsType=standard&rosterstatus=undefined&site_id=0&first=0&limit=500&sort=gaa&league_id=1&lang=en&division=-1&conference=-1&qualified=all`
   );
-  const raw = extractSiteKit(data, "Players");
-  return Array.isArray(raw) ? raw : [];
+  return ensureArray(extractSiteKit(data, "Players"));
 }
 
 export async function getTopScorers(seasonId = CURRENT_SEASON_ID) {
   const data = await htFetch(
     `feed=modulekit&view=statviewtype&type=topscorers&first=0&limit=100&season_id=${seasonId}`
   );
-  const raw = extractSiteKit(data, "Statviewtype");
-  return Array.isArray(raw) ? raw.filter((r: any) => r.player_name || r.name || r.first_name) : [];
+  return ensureArray(extractSiteKit(data, "Statviewtype")).filter((r: any) => r.player_name || r.name || r.first_name);
 }
 
 // --- Teams ---
@@ -202,8 +198,8 @@ export async function getTeamRoster(
   const data = await htFetch(
     `feed=modulekit&view=roster&team_id=${teamId}&season_id=${seasonId}`
   );
-  const raw = extractSiteKit(data, "Roster");
-  if (!Array.isArray(raw)) return [];
+  const raw = ensureArray(extractSiteKit(data, "Roster"));
+  if (raw.length === 0) return [];
   let roster = raw.filter((p: any) => typeof p === "object" && p !== null && !Array.isArray(p) && p.first_name);
   if (roster.length > 0 && roster[0]?.sections) {
     roster = roster[0].sections.flatMap((s: any) => s.data ?? []);

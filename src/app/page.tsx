@@ -10,8 +10,7 @@ export const revalidate = 60;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function GameStatus({ status }: { status: string }) {
-  const s = status?.toLowerCase() ?? "";
-  if (s.includes("progress") || s.includes("live")) {
+  if (isGameLive(status)) {
     return (
       <span className="flex items-center gap-1.5 text-xs font-bold uppercase text-live">
         <span className="live-dot" />
@@ -19,7 +18,7 @@ function GameStatus({ status }: { status: string }) {
       </span>
     );
   }
-  if (s.includes("final")) {
+  if (isGameFinal(status)) {
     return (
       <span className="text-xs font-semibold uppercase text-gray-400">
         {status}
