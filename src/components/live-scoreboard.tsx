@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getTeamMeta, type TeamMeta } from "@/lib/teams";
-import Image from "next/image";
+import { getTeamMeta } from "@/lib/teams";
+import { PERIOD_LABELS } from "@/lib/utils";
+import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -31,10 +32,6 @@ interface LiveState {
   connected: boolean;
   wasConnected: boolean;
 }
-
-const PERIOD_LABELS: Record<string, string> = {
-  "1": "1st", "2": "2nd", "3": "3rd", "4": "OT",
-};
 
 export function extractGameData(data: any, gameKey: string, homeTeamId: string) {
   let clock: string | null = null;
@@ -79,18 +76,16 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
   const PERIOD_SECONDS = 1200; // 20 minutes per period
   const pensRoot = Array.isArray(data?.penalties) ? data.penalties.find((p: any) => p?.games) : data?.penalties;
   const gamePens = pensRoot?.games?.[gameKey]?.GamePenalties;
-  // #60: Only process penalties when we have reliable clock data.
-  // Without a clock, we can't calculate remaining time accurately.
+  // Only process penalties when we have reliable clock data — without
+  // a clock, remaining time can't be calculated accurately.
   if (gamePens && typeof gamePens === "object" && clock !== null && period) {
     const curPeriod = parseInt(period);
     const clockParts = clock.split(":");
     const clockSeconds = clockParts.length === 2
       ? parseInt(clockParts[0]) * 60 + parseInt(clockParts[1])
       : 0;
-    // Absolute game seconds elapsed: how far into the game we are
     const gameElapsed = (curPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - clockSeconds);
 
-    // Collect PP goals with their absolute game time for minor termination
     const ppGoalTimes: { gameSecond: number; againstHome: boolean }[] = [];
     if (gameGoals && typeof gameGoals === "object") {
       for (const goal of Object.values(gameGoals) as any[]) {
@@ -101,14 +96,12 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
             ? parseInt(gTimeParts[0]) * 60 + parseInt(gTimeParts[1])
             : 0;
           const gGameSec = (gPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - gClockSec);
-          // A PP goal is scored against the team that committed the penalty
-          // goal.IsHome means the HOME team scored, so the penalty was on the VISITOR
+          // IsHome = home team scored, so the penalty was against the visitor
           ppGoalTimes.push({ gameSecond: gGameSec, againstHome: !goal.IsHome });
         }
       }
     }
 
-    // First pass: parse all penalties with their timing
     interface ParsedPenalty {
       playerName: string;
       jerseyNumber: number;
@@ -128,16 +121,14 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
       const penClockSec = penTimeParts.length === 2
         ? parseInt(penTimeParts[0]) * 60 + parseInt(penTimeParts[1])
         : 0;
-      // Absolute game second when penalty was called
       const penGameSec = (penPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - penClockSec);
       const penMinutes = pen.Minutes ?? 2;
       const durationSeconds = penMinutes * 60;
-      // #58: Misconduct = 10 min. Doesn't create a power play.
+      // Misconduct (10 min) doesn't create a power play
       const isMisconduct = penMinutes === 10;
       const isMajor = penMinutes >= 5 && !isMisconduct;
       const isHome = !!pen.Home;
 
-      // Natural expiry time (absolute game seconds)
       let expiryGameSec = penGameSec + durationSeconds;
 
       // PP goal termination only applies to minor penalties (2 min).
@@ -153,7 +144,6 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
         }
       }
 
-      // Still active?
       if (gameElapsed < expiryGameSec) {
         parsedPens.push({
           playerName: `${pen.PenalizedPlayerFirstName ?? ""} ${pen.PenalizedPlayerLastName ?? ""}`.trim(),
@@ -169,8 +159,8 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
       }
     }
 
-    // #57: Detect coincidental penalties — penalties on opposite teams assessed
-    // at the same game second. These offset and don't create a power play.
+    // Coincidental penalties: same time, same duration, opposite teams.
+    // These offset and don't create a power play.
     const coincidentalSet = new Set<number>();
     for (let i = 0; i < parsedPens.length; i++) {
       for (let j = i + 1; j < parsedPens.length; j++) {
@@ -184,7 +174,6 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
       }
     }
 
-    // Build final penalty lists
     for (let i = 0; i < parsedPens.length; i++) {
       const p = parsedPens[i];
       const isCoincidental = coincidentalSet.has(i);
@@ -364,11 +353,7 @@ export function LiveScoreboard({
         <div className="flex items-center justify-center gap-6 sm:gap-8 py-4">
           <div className="flex flex-col items-center gap-2">
             <Link href={`/team/${awayTeam.id}`}>
-              {awayTeam.logo ? (
-                <Image src={awayTeam.logo} alt={`${awayTeam.city} ${awayTeam.name}`} width={64} height={64} className="rounded-xl object-contain" />
-              ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-base sm:text-lg font-black text-white shadow-xl" style={{ backgroundColor: awayTeam.color }}>{awayTeam.abbr}</div>
-              )}
+              <TeamLogo team={awayTeam} size="xl" />
             </Link>
             <span className="text-xs sm:text-sm font-medium text-gray-300">{visitorName}</span>
             {live.connected && <PenBadges penalties={live.visitorPenalties} />}
@@ -382,11 +367,7 @@ export function LiveScoreboard({
 
           <div className="flex flex-col items-center gap-2">
             <Link href={`/team/${homeTeam.id}`}>
-              {homeTeam.logo ? (
-                <Image src={homeTeam.logo} alt={`${homeTeam.city} ${homeTeam.name}`} width={64} height={64} className="rounded-xl object-contain" />
-              ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center text-base sm:text-lg font-black text-white shadow-xl" style={{ backgroundColor: homeTeam.color }}>{homeTeam.abbr}</div>
-              )}
+              <TeamLogo team={homeTeam} size="xl" />
             </Link>
             <span className="text-xs sm:text-sm font-medium text-gray-300">{homeName}</span>
             {live.connected && <PenBadges penalties={live.homePenalties} />}
@@ -394,7 +375,7 @@ export function LiveScoreboard({
         </div>
 
         {live.connected && (() => {
-          // #44: Derive game situation from active non-coincidental, non-misconduct penalties
+          // Derive game situation from active non-coincidental, non-misconduct penalties
           const homePPPens = live.homePenalties.filter(p => !p.isCoincidental && !p.isMisconduct);
           const awayPPPens = live.visitorPenalties.filter(p => !p.isCoincidental && !p.isMisconduct);
           const homeInBox = homePPPens.length;

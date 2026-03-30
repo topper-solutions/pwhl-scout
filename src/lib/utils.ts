@@ -24,6 +24,17 @@ export function val(obj: any, ...keys: string[]) {
   return "—";
 }
 
+export const PERIOD_LABELS: Record<string, string> = {
+  "1": "1st",
+  "2": "2nd",
+  "3": "3rd",
+  "4": "OT",
+};
+
+export function periodLabel(p: string | number): string {
+  return PERIOD_LABELS[String(p)] ?? `P${p}`;
+}
+
 export function formatDate(dateStr: string) {
   if (!dateStr) return "";
   try {

@@ -1,6 +1,7 @@
 import { getSeasonSchedule, getTeamSchedule } from "@/lib/api";
-import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
-import { formatDate } from "@/lib/utils";
+import { getTeamMeta } from "@/lib/teams";
+import { TeamFilter } from "@/components/team-filter";
+import { formatDate, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
@@ -46,18 +47,20 @@ export default async function SchedulePage({
   }
 
   // Group by month using ISO date (date_played: "2025-11-21")
+  const monthKeyCache: Record<string, string> = {};
   const byMonth: Record<string, any[]> = {};
   for (const game of games) {
     const isoDate = game.date_played ?? game.game_date ?? "";
+    const ym = isoDate?.slice(0, 7) ?? ""; // "2025-11"
     let monthKey = "Unknown";
-    if (isoDate) {
-      const [year, month] = isoDate.split("-");
-      if (year && month) {
+    if (ym && ym.includes("-")) {
+      if (monthKeyCache[ym]) {
+        monthKey = monthKeyCache[ym];
+      } else {
+        const [year, month] = ym.split("-");
         const d = new Date(parseInt(year), parseInt(month) - 1);
-        monthKey = d.toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        });
+        monthKey = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+        monthKeyCache[ym] = monthKey;
       }
     }
     if (!byMonth[monthKey]) byMonth[monthKey] = [];
@@ -74,40 +77,7 @@ export default async function SchedulePage({
           </p>
         </div>
 
-        {/* Team filter */}
-        <div className="flex flex-wrap gap-1.5">
-          <Link
-            href="/schedule"
-            className={`team-badge border transition-colors ${
-              !teamFilter
-                ? "border-ice/40 bg-rink-700/60 text-white"
-                : "border-rink-700/30 bg-rink-900/40 text-gray-400 hover:text-white"
-            }`}
-          >
-            All
-          </Link>
-          {TEAM_LIST.map((t) => (
-            <Link
-              key={t.id}
-              href={`/schedule?team=${t.id}`}
-              className={`team-badge border transition-colors ${
-                teamFilter === t.id
-                  ? "text-white"
-                  : "border-rink-700/30 bg-rink-900/40 text-gray-400 hover:text-white"
-              }`}
-              style={
-                teamFilter === t.id
-                  ? {
-                      borderColor: t.color + "80",
-                      backgroundColor: t.color + "30",
-                    }
-                  : undefined
-              }
-            >
-              {t.abbr}
-            </Link>
-          ))}
-        </div>
+        <TeamFilter baseHref="/schedule" activeTeamId={teamFilter} />
       </div>
 
       {Object.entries(byMonth).map(([month, monthGames]) => (
@@ -132,9 +102,7 @@ export default async function SchedulePage({
                     const home = getTeamMeta(g.home_team ?? 0);
                     const away = getTeamMeta(g.visiting_team ?? 0);
                     const status = g.game_status ?? "Scheduled";
-                    const isFinal = status
-                      ?.toLowerCase()
-                      ?.includes("final");
+                    const isFinal = isGameFinal(status);
                     const gameId = g.game_id ?? g.ID;
                     const date = formatDate(
                       g.date_with_day ?? g.game_date ?? ""
@@ -191,11 +159,9 @@ export default async function SchedulePage({
                         <td>
                           <span
                             className={`text-xs ${
-                              status?.toLowerCase()?.includes("final")
+                              isGameFinal(status)
                                 ? "text-gray-500"
-                                : status
-                                    ?.toLowerCase()
-                                    ?.includes("progress")
+                                : isGameLive(status)
                                 ? "text-live font-bold"
                                 : "text-gray-600"
                             }`}
