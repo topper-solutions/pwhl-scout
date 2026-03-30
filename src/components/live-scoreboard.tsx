@@ -29,6 +29,7 @@ interface LiveState {
   homePenalties: LivePenalty[];
   visitorPenalties: LivePenalty[];
   connected: boolean;
+  wasConnected: boolean;
 }
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -242,6 +243,7 @@ export function LiveScoreboard({
     homeShots: 0, visitorShots: 0,
     homePenalties: [], visitorPenalties: [],
     connected: false,
+    wasConnected: false,
   });
 
   useEffect(() => {
@@ -254,7 +256,7 @@ export function LiveScoreboard({
         const p = JSON.parse(event.data);
         if (p.path === "/" && p.data) {
           fullDataRef.current = p.data;
-          setLive({ ...extractGameData(p.data, gameKey, homeTeamId), connected: true });
+          setLive({ ...extractGameData(p.data, gameKey, homeTeamId), connected: true, wasConnected: true });
         }
       } catch { /* ignore */ }
     });
@@ -277,7 +279,7 @@ export function LiveScoreboard({
           } else {
             fullDataRef.current = { ...fullDataRef.current, ...p.data };
           }
-          setLive({ ...extractGameData(fullDataRef.current, gameKey, homeTeamId), connected: true });
+          setLive({ ...extractGameData(fullDataRef.current, gameKey, homeTeamId), connected: true, wasConnected: true });
         }
       } catch { /* ignore */ }
     });
@@ -391,17 +393,53 @@ export function LiveScoreboard({
           </div>
         </div>
 
-        {live.connected && (live.homeShots > 0 || live.visitorShots > 0) && (
-          <div className="flex items-center justify-center gap-4 text-xs text-gray-400 mt-1">
-            <span>SOG: {awayTeam.abbr} {live.visitorShots}</span>
-            <span className="text-gray-600">|</span>
-            <span>{homeTeam.abbr} {live.homeShots}</span>
-          </div>
-        )}
+        {live.connected && (() => {
+          // #44: Derive game situation from active non-coincidental, non-misconduct penalties
+          const homePPPens = live.homePenalties.filter(p => !p.isCoincidental && !p.isMisconduct);
+          const awayPPPens = live.visitorPenalties.filter(p => !p.isCoincidental && !p.isMisconduct);
+          const homeInBox = homePPPens.length;
+          const awayInBox = awayPPPens.length;
+          let situation: string | null = null;
+          let situationClass = "text-gray-400";
+          if (homeInBox > 0 && awayInBox === 0) {
+            situation = homeInBox >= 2 ? `5-on-3 ${awayTeam.abbr}` : `PP ${awayTeam.abbr}`;
+            situationClass = "text-amber-400";
+          } else if (awayInBox > 0 && homeInBox === 0) {
+            situation = awayInBox >= 2 ? `5-on-3 ${homeTeam.abbr}` : `PP ${homeTeam.abbr}`;
+            situationClass = "text-amber-400";
+          } else if (homeInBox > 0 && awayInBox > 0) {
+            if (homeInBox > awayInBox) {
+              situation = `PP ${awayTeam.abbr}`;
+              situationClass = "text-amber-400";
+            } else if (awayInBox > homeInBox) {
+              situation = `PP ${homeTeam.abbr}`;
+              situationClass = "text-amber-400";
+            } else {
+              situation = `${5 - homeInBox}-on-${5 - awayInBox}`;
+              situationClass = "text-sky-400";
+            }
+          }
+
+          return (
+            <div className="flex items-center justify-center gap-4 text-xs mt-1">
+              {situation && (
+                <>
+                  <span className={`font-bold uppercase ${situationClass}`}>{situation}</span>
+                  {(live.homeShots > 0 || live.visitorShots > 0) && <span className="text-gray-600">|</span>}
+                </>
+              )}
+              {(live.homeShots > 0 || live.visitorShots > 0) && (
+                <span className="text-gray-400">
+                  SOG: {awayTeam.abbr} {live.visitorShots} — {homeTeam.abbr} {live.homeShots}
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {isLive && !live.connected && (
-          <p className="text-center text-[10px] text-amber-500/60 mt-2">
-            Connecting to live data...
+          <p className={`text-center text-[10px] mt-2 ${live.wasConnected ? "text-amber-500" : "text-amber-500/60"}`}>
+            {live.wasConnected ? "Reconnecting to live data..." : "Connecting to live data..."}
           </p>
         )}
 

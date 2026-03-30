@@ -251,8 +251,11 @@ export default async function GamePage({
     goalsByPeriod[label].push(g);
   }
 
-  const starColors = ["text-amber-400", "text-gray-300", "text-orange-700"];
-  const starSizes = ["text-lg", "text-base", "text-sm"];
+  const starStyles = [
+    { color: "text-amber-400", glow: "drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]", size: "text-2xl", label: "1st Star" },
+    { color: "text-gray-300", glow: "drop-shadow-[0_0_4px_rgba(209,213,219,0.3)]", size: "text-lg", label: "2nd Star" },
+    { color: "text-orange-700", glow: "", size: "text-base", label: "3rd Star" },
+  ];
 
   return (
     <div className="animate-fade-in">
@@ -299,26 +302,36 @@ export default async function GamePage({
               <div className="px-5 py-3 border-b border-rink-700/30">
                 <h2 className="section-title text-base">Three Stars</h2>
               </div>
-              <div className="p-4 space-y-3">
+              <div className="p-4 space-y-1">
                 {threeStars.map((star: any, i: number) => {
                   const starTeam =
                     star.home === 1 || star.home === "1" ? homeTeam : awayTeam;
+                  const style = starStyles[i] ?? { color: "text-gray-500", glow: "", size: "text-sm", label: "" };
+                  const isFirst = i === 0;
                   return (
-                    <div key={i} className="flex items-center gap-3">
+                    <div
+                      key={i}
+                      className={`flex items-center gap-3 rounded-lg transition-colors ${
+                        isFirst ? "bg-amber-950/15 border border-amber-800/20 p-3" : "p-2.5"
+                      }`}
+                    >
                       <span
-                        className={`${starSizes[i] ?? "text-sm"} font-display font-bold ${starColors[i] ?? "text-gray-500"} w-8 shrink-0 text-center`}
+                        className={`${style.size} font-display font-bold ${style.color} ${style.glow} w-9 shrink-0 text-center`}
                       >
-                        {"★".repeat(i + 1)}
+                        ★
                       </span>
-                      <TeamLogo team={starTeam} size="sm" />
-                      <div>
-                        <p className="text-sm font-medium text-white">
+                      <TeamLogo team={starTeam} size={isFirst ? "md" : "sm"} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold text-white ${isFirst ? "text-base" : "text-sm"}`}>
                           {playerName(star)}
                         </p>
                         <p className="text-[10px] text-gray-500">
                           #{star.jersey_number ?? ""} &middot; {starTeam.city}
                         </p>
                       </div>
+                      <span className={`text-[9px] font-bold uppercase tracking-wider ${style.color} opacity-60 shrink-0`}>
+                        {style.label}
+                      </span>
                     </div>
                   );
                 })}
