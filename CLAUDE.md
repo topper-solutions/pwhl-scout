@@ -14,11 +14,11 @@ npm run test:coverage  # Coverage report (v8)
 npm audit              # Check for dependency vulnerabilities (should return 0)
 ```
 
-Tests use **Vitest 4** with React Testing Library and jsdom. 108 tests across `src/lib/*.test.ts` and `src/components/error-banner.test.tsx` (100% coverage across statements, branches, functions, and lines). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
+Tests use **Vitest 4** with React Testing Library and jsdom. 183 tests across 15 test files covering lib functions, components, API routes, and page-level error handling (100% coverage across statements, branches, functions, and lines). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
 
 ## Architecture
 
-Next.js 15 App Router project (React 19, TypeScript, Tailwind CSS) that tracks the Professional Women's Hockey League. All pages are **server components**. Client components (`"use client"`) are limited to `error.tsx` and `live-scoreboard.tsx`. Data is fetched server-side so API credentials never reach the client bundle.
+Next.js 15 App Router project (React 19, TypeScript, Tailwind CSS) that tracks the Professional Women's Hockey League. All pages are **server components**. Client components (`"use client"`) are limited to `error.tsx`, `live-scoreboard.tsx`, and `data-freshness.tsx`. Data is fetched server-side so API credentials never reach the client bundle.
 
 ### Data flow
 
@@ -45,12 +45,16 @@ Two upstream APIs, both requiring credentials as URL query parameters (inherent 
 
 All fetch calls have a 10-second `AbortSignal.timeout`. ISR revalidation is set per page (60s for live scores, 120-300s for static data).
 
-### Live game updates (`src/components/live-scoreboard.tsx`, `src/app/api/live/route.ts`)
+### Health endpoint (`src/app/api/health/route.ts`)
+
+`/api/health` checks HockeyTech and Firebase reachability in parallel (5s timeout each). Returns `healthy`, `degraded`, or `unhealthy` status with per-upstream latency. HTTP 200 for healthy/degraded, 503 for unhealthy.
+
+### Live game updates (`src/components/live-scoreboard.tsx`, `src/lib/extract-game-data.ts`, `src/app/api/live/route.ts`)
 
 Real-time updates during active games use Firebase Realtime Database via Server-Sent Events (SSE):
 1. `/api/live` route proxies the Firebase SSE stream, keeping credentials server-side
 2. `LiveScoreboard` client component connects via `EventSource`, stores the full Firebase tree in a `useRef`, and merges PATCH events incrementally
-3. `extractGameData()` parses clock, goals, shots, and penalties from the Firebase tree
+3. `extractGameData()` in `src/lib/extract-game-data.ts` parses clock, goals, shots, and penalties from the Firebase tree (extracted from LiveScoreboard for independent testability)
 4. Penalty tracking uses **absolute game seconds** (`(period-1) × 1200 + elapsed`) for correct cross-period carry-over, and checks power-play goals to terminate minor penalties early
 
 ### Team metadata (`src/lib/teams.ts`)
@@ -87,6 +91,7 @@ These keys are publicly visible in thepwhl.com's client-side JavaScript. They ar
 - `TeamLogo` — renders team logo via `next/image` (5 sizes: xs/sm/md/lg/xl) with colored abbreviation fallback
 - `ErrorBanner` — red-tinted glass card for API failure messages
 - `LiveScoreboard` — client component for real-time game score, clock, shots, and penalty badges
+- `DataFreshness` — client component showing "Updated {time}" with staleness warning when data exceeds 2x the revalidation interval
 
 ### Types (`src/lib/types.ts`)
 
@@ -102,7 +107,16 @@ Test files are colocated with source:
 - `src/lib/pbp-labels.test.ts` — all event type labels + fallback
 - `src/lib/api.test.ts` — extractSiteKit (5 formats), parseHockeyTechResponse (JSONP), fetch functions with mocked fetch
 - `src/lib/api-env.test.ts` — missing env var validation, credential-gated error paths
+- `src/lib/extract-game-data.test.ts` — clock parsing, goal/shot counting, penalty math, PP goal termination, coincidental detection
 - `src/components/error-banner.test.tsx` — render + content assertions
+- `src/components/data-freshness.test.tsx` — staleness threshold, interval updates
+- `src/app/api/health/route.test.ts` — upstream checks, degraded/unhealthy states, timeouts
+- `src/app/page.test.tsx` — homepage error handling, partial failures
+- `src/app/standings/page.test.tsx` — standings error/success paths
+- `src/app/schedule/page.test.tsx` — schedule error/success paths
+- `src/app/stats/page.test.tsx` — stats error/success, view switching
+- `src/app/game/[id]/page.test.tsx` — game detail error/success, invalid ID
+- `src/app/team/[id]/page.test.tsx` — team page error/success, invalid ID
 
 ## Security
 

@@ -13,6 +13,8 @@ Unofficial stats tracker for the Professional Women's Hockey League. Live scores
 - **Game detail** — box score, goals, penalties, shots by period, three stars, and play-by-play
 - **Schedule** — season schedule with team filter and completed game scores
 - **Team pages** — roster, schedule, and quick-nav between teams
+- **Data freshness** — staleness indicator warns when ISR-cached data may be outdated
+- **Health monitoring** — `/api/health` endpoint checks upstream API reachability
 
 ## Getting Started
 
@@ -93,16 +95,19 @@ src/
     game/[id]/page.tsx    # Game detail — box score, PBP, three stars
     team/[id]/page.tsx    # Team page — roster and schedule
     api/live/route.ts     # SSE proxy for Firebase live data
+    api/health/route.ts   # Upstream health check endpoint
     error.tsx             # Global error boundary (client component)
     not-found.tsx         # 404 page
     globals.css           # Tailwind base + component classes
     layout.tsx            # Root layout with nav, fonts, metadata
   components/
     live-scoreboard.tsx   # Real-time game scoreboard (client component)
+    data-freshness.tsx    # ISR staleness indicator (client component)
     team-logo.tsx         # Team logo with fallback
     error-banner.tsx      # API failure message
   lib/
     api.ts                # All upstream API calls + response parsing
+    extract-game-data.ts  # Firebase live game data parser (extracted for testability)
     teams.ts              # Team metadata (colors, logos, names)
     types.ts              # TypeScript interfaces for API responses
     utils.ts              # Shared pure functions
@@ -120,7 +125,7 @@ npm run test:watch     # Watch mode
 npm run test:coverage  # Coverage report (v8)
 ```
 
-108 tests across 6 test files with 100% coverage (statements, branches, functions, lines). Tests use Vitest 4 with React Testing Library and jsdom.
+183 tests across 15 test files with 100% coverage (statements, branches, functions, lines). Tests use Vitest 4 with React Testing Library and jsdom.
 
 ## Environment Variables
 
