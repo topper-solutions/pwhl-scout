@@ -119,4 +119,18 @@ describe("formatDate", () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it("returns raw string when toLocaleDateString throws", () => {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const origToLocale = Date.prototype.toLocaleDateString;
+    Date.prototype.toLocaleDateString = () => { throw new Error("locale error"); };
+    const result = formatDate("2025-11-21T12:00:00");
+    expect(result).toBe("2025-11-21T12:00:00");
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining("Date formatting error"),
+      expect.any(Error)
+    );
+    Date.prototype.toLocaleDateString = origToLocale;
+    spy.mockRestore();
+  });
 });

@@ -175,8 +175,14 @@ describe("HockeyTech API functions", () => {
     it("returns schedule array", async () => {
       const games = [{ game_id: "210" }];
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Schedule", games)));
-      const result = await getSeasonSchedule();
+      const result = await getSeasonSchedule(8);
       expect(result).toEqual(games);
+    });
+
+    it("returns empty array when Schedule is not an array", async () => {
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Schedule", null)));
+      const result = await getSeasonSchedule(8);
+      expect(result).toEqual([]);
     });
   });
 
@@ -184,8 +190,14 @@ describe("HockeyTech API functions", () => {
     it("returns team schedule from sections response", async () => {
       const games = [{ game_id: "210", home_team_city: "Boston" }];
       vi.stubGlobal("fetch", mockFetchResponse(sectionsResponse(games)));
-      const result = await getTeamSchedule(1);
+      const result = await getTeamSchedule(1, 8);
       expect(result).toEqual(games);
+    });
+
+    it("returns empty array when data is not an array", async () => {
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Schedule", "bad")));
+      const result = await getTeamSchedule(1, 8);
+      expect(result).toEqual([]);
     });
   });
 
@@ -197,9 +209,15 @@ describe("HockeyTech API functions", () => {
         { team_id: "3", team_name: "Montréal Victoire", points: "46" },
       ];
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Statviewtype", rows)));
-      const result = await getStandings();
+      const result = await getStandings(8);
       expect(result).toHaveLength(2);
       expect(result[0].team_name).toBe("Boston Fleet");
+    });
+
+    it("returns empty array when data is not an array", async () => {
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Statviewtype", null)));
+      const result = await getStandings(8);
+      expect(result).toEqual([]);
     });
   });
 
@@ -231,8 +249,14 @@ describe("HockeyTech API functions", () => {
     it("returns players from sections response", async () => {
       const players = [{ name: "Kelly Pannek", points: "22" }];
       vi.stubGlobal("fetch", mockFetchResponse(sectionsResponse(players)));
-      const result = await getSkaterStats();
+      const result = await getSkaterStats(8);
       expect(result).toEqual(players);
+    });
+
+    it("returns empty array when data is not an array", async () => {
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Players", null)));
+      const result = await getSkaterStats(8);
+      expect(result).toEqual([]);
     });
   });
 
@@ -240,8 +264,14 @@ describe("HockeyTech API functions", () => {
     it("returns goalies from sections response", async () => {
       const goalies = [{ name: "Ann-Renée Desbiens", gaa: "1.50" }];
       vi.stubGlobal("fetch", mockFetchResponse(sectionsResponse(goalies)));
-      const result = await getGoalieStats();
+      const result = await getGoalieStats(8);
       expect(result).toEqual(goalies);
+    });
+
+    it("returns empty array when data is not an array", async () => {
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Players", null)));
+      const result = await getGoalieStats(8);
+      expect(result).toEqual([]);
     });
   });
 
@@ -252,9 +282,15 @@ describe("HockeyTech API functions", () => {
         { repeatheader: 1 },
       ];
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Statviewtype", rows)));
-      const result = await getTopScorers();
+      const result = await getTopScorers(8);
       expect(result).toHaveLength(1);
       expect(result[0].player_name).toBe("Kelly Pannek");
+    });
+
+    it("returns empty array when data is not an array", async () => {
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Statviewtype", null)));
+      const result = await getTopScorers(8);
+      expect(result).toEqual([]);
     });
   });
 
@@ -262,7 +298,7 @@ describe("HockeyTech API functions", () => {
     it("returns teams data", async () => {
       const teams = [{ id: "1", code: "BOS" }];
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Teamsbyseason", teams)));
-      const result = await getTeams();
+      const result = await getTeams(8);
       expect(result).toEqual(teams);
     });
   });
@@ -274,14 +310,14 @@ describe("HockeyTech API functions", () => {
         [1, 2, 3],
       ];
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Roster", roster)));
-      const result = await getTeamRoster(3);
+      const result = await getTeamRoster(3, 8);
       expect(result).toHaveLength(1);
       expect(result[0].first_name).toBe("Marie-Philip");
     });
 
     it("returns empty array when Roster is not an array", async () => {
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Roster", null)));
-      const result = await getTeamRoster(3);
+      const result = await getTeamRoster(3, 8);
       expect(result).toEqual([]);
     });
 
@@ -295,8 +331,23 @@ describe("HockeyTech API functions", () => {
         },
       ];
       vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Roster", roster)));
-      const result = await getTeamRoster(3);
+      const result = await getTeamRoster(3, 8);
       expect(result).toEqual([{ first_name: "A" }, { first_name: "B" }]);
+    });
+
+    it("handles sections with missing data property", async () => {
+      const roster = [
+        {
+          first_name: "wrapper",
+          sections: [
+            { title: "Forwards" },
+            { data: [{ first_name: "C" }] },
+          ],
+        },
+      ];
+      vi.stubGlobal("fetch", mockFetchResponse(siteKitResponse("Roster", roster)));
+      const result = await getTeamRoster(3, 8);
+      expect(result).toEqual([{ first_name: "C" }]);
     });
   });
 
@@ -331,7 +382,7 @@ describe("HockeyTech API functions", () => {
     it("returns raw game-by-game data", async () => {
       const gbg = { SiteKit: { Player: { games: [{ game_id: "302" }] } } };
       vi.stubGlobal("fetch", mockFetchResponse(JSON.stringify(gbg)));
-      const result = await getPlayerGameByGame(42);
+      const result = await getPlayerGameByGame(42, 8);
       expect(result).toEqual(gbg);
     });
   });

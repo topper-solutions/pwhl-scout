@@ -120,7 +120,7 @@ npm run test:watch     # Watch mode
 npm run test:coverage  # Coverage report (v8)
 ```
 
-97 tests across 5 test files with ~95% statement coverage and 100% function coverage. Tests use Vitest 4 with React Testing Library and jsdom.
+108 tests across 6 test files with 100% coverage (statements, branches, functions, lines). Tests use Vitest 4 with React Testing Library and jsdom.
 
 ## Environment Variables
 
