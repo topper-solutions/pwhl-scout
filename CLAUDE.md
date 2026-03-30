@@ -14,7 +14,7 @@ npm run test:coverage  # Coverage report (v8)
 npm audit              # Check for dependency vulnerabilities (should return 0)
 ```
 
-Tests use **Vitest 4** with React Testing Library and jsdom. 97 tests across `src/lib/*.test.ts` and `src/components/error-banner.test.tsx` (~95% statement coverage, 100% function coverage). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
+Tests use **Vitest 4** with React Testing Library and jsdom. 108 tests across `src/lib/*.test.ts` and `src/components/error-banner.test.tsx` (100% coverage across statements, branches, functions, and lines). Run a single test file with `npx vitest run src/lib/utils.test.ts`.
 
 ## Architecture
 
@@ -101,6 +101,7 @@ Test files are colocated with source:
 - `src/lib/teams.test.ts` — getTeamMeta (ID/abbr/city/fallback), getTeamByAbbr, TEAM_LIST
 - `src/lib/pbp-labels.test.ts` — all event type labels + fallback
 - `src/lib/api.test.ts` — extractSiteKit (5 formats), parseHockeyTechResponse (JSONP), fetch functions with mocked fetch
+- `src/lib/api-env.test.ts` — missing env var validation, credential-gated error paths
 - `src/components/error-banner.test.tsx` — render + content assertions
 
 ## Security
