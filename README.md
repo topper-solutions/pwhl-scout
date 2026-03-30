@@ -1,7 +1,7 @@
-# PWHL Scout
+# PWHL Gameday
 
-[![CI](https://github.com/topper-solutions/pwhl-scout/actions/workflows/ci.yml/badge.svg)](https://github.com/topper-solutions/pwhl-scout/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/murphy-platforms/8e2b3b269fe2a325c4bf2a222685a573/raw/pwhl-scout-coverage.json)](https://github.com/topper-solutions/pwhl-scout/actions/workflows/ci.yml)
+[![CI](https://github.com/topper-solutions/pwhl-gameday/actions/workflows/ci.yml/badge.svg)](https://github.com/topper-solutions/pwhl-gameday/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/murphy-platforms/8e2b3b269fe2a325c4bf2a222685a573/raw/pwhl-gameday-coverage.json)](https://github.com/topper-solutions/pwhl-gameday/actions/workflows/ci.yml)
 
 Unofficial stats tracker for the Professional Women's Hockey League. Live scores, standings, player stats, schedules, and game details with real-time updates during active games.
 
@@ -132,7 +132,7 @@ Required in `.env.local` (see `.env.example`):
 | `HOCKEYTECH_CLIENT_CODE` | Client identifier (defaults to `"pwhl"`) |
 | `FIREBASE_AUTH_TOKEN` | Firebase Realtime Database auth |
 | `FIREBASE_API_KEY` | Firebase API key |
-| `NEXT_PUBLIC_BASE_PATH` | Optional — set when deploying under a subpath (e.g., `/pwhl-scout`) |
+| `NEXT_PUBLIC_BASE_PATH` | Optional — set when deploying under a subpath (e.g., `/pwhl-gameday`) |
 
 These keys are publicly visible in thepwhl.com's client-side JavaScript. They are kept in env vars for rotation support, not secrecy.
 

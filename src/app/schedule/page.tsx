@@ -9,7 +9,7 @@ import Link from "next/link";
 export const revalidate = 300;
 
 export const metadata = {
-  title: "Schedule | PWHL Scout",
+  title: "Schedule | PWHL Gameday",
   description: "PWHL game schedule for the 2025-2026 season.",
 };
 

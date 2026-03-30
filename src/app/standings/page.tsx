@@ -7,7 +7,7 @@ import Link from "next/link";
 export const revalidate = 120;
 
 export const metadata = {
-  title: "Standings | PWHL Scout",
+  title: "Standings | PWHL Gameday",
   description: "PWHL league standings for the 2025-2026 season.",
 };
 

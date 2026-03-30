@@ -18,7 +18,7 @@ export async function generateMetadata({
   const { id } = await params;
   const team = getTeamMeta(parseInt(id));
   return {
-    title: `${team.city} ${team.name} | PWHL Scout`,
+    title: `${team.city} ${team.name} | PWHL Gameday`,
     description: `Roster, schedule, and stats for the ${team.city} ${team.name}.`,
   };
 }

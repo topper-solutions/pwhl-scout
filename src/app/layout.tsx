@@ -22,7 +22,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PWHL Scout — Live Scores, Stats & Standings",
+  title: "PWHL Gameday — Live Scores, Stats & Standings",
   description:
     "Track the Professional Women's Hockey League. Live scores, standings, player stats, schedules, and game details.",
 };
@@ -63,7 +63,7 @@ export default function RootLayout({
                 </svg>
               </div>
               <span className="font-display text-lg font-bold tracking-wide text-white group-hover:text-ice transition-colors">
-                PWHL SCOUT
+                PWHL GAMEDAY
               </span>
             </Link>
 
@@ -84,7 +84,7 @@ export default function RootLayout({
         <footer className="border-t border-rink-800/40 py-6 mt-auto">
           <div className="mx-auto max-w-7xl px-4 flex items-center justify-between text-xs text-gray-500">
             <span>
-              PWHL Scout — Unofficial stats tracker
+              PWHL Gameday — Unofficial stats tracker
             </span>
             <span>
               Data via HockeyTech
