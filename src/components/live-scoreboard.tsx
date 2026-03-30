@@ -15,6 +15,8 @@ interface LivePenalty {
   offence: string;
   remainingSeconds: number;
   isMajor: boolean;
+  isMisconduct: boolean;
+  isCoincidental: boolean;
 }
 
 interface LiveState {
@@ -76,6 +78,8 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
   const PERIOD_SECONDS = 1200; // 20 minutes per period
   const pensRoot = Array.isArray(data?.penalties) ? data.penalties.find((p: any) => p?.games) : data?.penalties;
   const gamePens = pensRoot?.games?.[gameKey]?.GamePenalties;
+  // #60: Only process penalties when we have reliable clock data.
+  // Without a clock, we can't calculate remaining time accurately.
   if (gamePens && typeof gamePens === "object" && clock !== null && period) {
     const curPeriod = parseInt(period);
     const clockParts = clock.split(":");
@@ -103,6 +107,20 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
       }
     }
 
+    // First pass: parse all penalties with their timing
+    interface ParsedPenalty {
+      playerName: string;
+      jerseyNumber: number;
+      isHome: boolean;
+      minutes: number;
+      offence: string;
+      isMajor: boolean;
+      isMisconduct: boolean;
+      penGameSec: number;
+      expiryGameSec: number;
+    }
+    const parsedPens: ParsedPenalty[] = [];
+
     for (const pen of Object.values(gamePens) as any[]) {
       const penPeriod = parseInt(pen.Period ?? "0");
       const penTimeParts = (pen.Time ?? "").split(":");
@@ -111,15 +129,19 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
         : 0;
       // Absolute game second when penalty was called
       const penGameSec = (penPeriod - 1) * PERIOD_SECONDS + (PERIOD_SECONDS - penClockSec);
-      const durationSeconds = (pen.Minutes ?? 2) * 60;
-      const isMajor = (pen.Minutes ?? 2) >= 5;
+      const penMinutes = pen.Minutes ?? 2;
+      const durationSeconds = penMinutes * 60;
+      // #58: Misconduct = 10 min. Doesn't create a power play.
+      const isMisconduct = penMinutes === 10;
+      const isMajor = penMinutes >= 5 && !isMisconduct;
       const isHome = !!pen.Home;
 
       // Natural expiry time (absolute game seconds)
       let expiryGameSec = penGameSec + durationSeconds;
 
-      // For minor penalties (< 5 min), check if a PP goal terminated it early
-      if (!isMajor) {
+      // PP goal termination only applies to minor penalties (2 min).
+      // Majors (5 min) are served in full. Misconducts don't create PPs.
+      if (!isMajor && !isMisconduct) {
         for (const ppg of ppGoalTimes) {
           if (ppg.againstHome === isHome &&
               ppg.gameSecond > penGameSec &&
@@ -132,25 +154,52 @@ export function extractGameData(data: any, gameKey: string, homeTeamId: string) 
 
       // Still active?
       if (gameElapsed < expiryGameSec) {
-        const remainingSeconds = expiryGameSec - gameElapsed;
-        homePenalties.push({
+        parsedPens.push({
           playerName: `${pen.PenalizedPlayerFirstName ?? ""} ${pen.PenalizedPlayerLastName ?? ""}`.trim(),
           jerseyNumber: pen.PenalizedPlayerJerseyNumber ?? 0,
           isHome,
-          minutes: pen.Minutes ?? 2,
+          minutes: penMinutes,
           offence: pen.OffenceDescription ?? "Penalty",
-          remainingSeconds,
           isMajor,
+          isMisconduct,
+          penGameSec,
+          expiryGameSec,
         });
       }
     }
 
-    // Split into home/visitor (built into homePenalties, need to redistribute)
-    const allPens = [...homePenalties];
-    homePenalties.length = 0;
-    for (const p of allPens) {
-      if (p.isHome) homePenalties.push(p);
-      else visitorPenalties.push(p);
+    // #57: Detect coincidental penalties — penalties on opposite teams assessed
+    // at the same game second. These offset and don't create a power play.
+    const coincidentalSet = new Set<number>();
+    for (let i = 0; i < parsedPens.length; i++) {
+      for (let j = i + 1; j < parsedPens.length; j++) {
+        const a = parsedPens[i], b = parsedPens[j];
+        if (a.isHome !== b.isHome &&
+            a.penGameSec === b.penGameSec &&
+            a.minutes === b.minutes) {
+          coincidentalSet.add(i);
+          coincidentalSet.add(j);
+        }
+      }
+    }
+
+    // Build final penalty lists
+    for (let i = 0; i < parsedPens.length; i++) {
+      const p = parsedPens[i];
+      const isCoincidental = coincidentalSet.has(i);
+      const livePen: LivePenalty = {
+        playerName: p.playerName,
+        jerseyNumber: p.jerseyNumber,
+        isHome: p.isHome,
+        minutes: p.minutes,
+        offence: p.offence,
+        remainingSeconds: p.expiryGameSec - gameElapsed,
+        isMajor: p.isMajor,
+        isMisconduct: p.isMisconduct,
+        isCoincidental,
+      };
+      if (p.isHome) homePenalties.push(livePen);
+      else visitorPenalties.push(livePen);
     }
   }
 
@@ -248,14 +297,33 @@ export function LiveScoreboard({
           const mins = Math.floor(pen.remainingSeconds / 60);
           const secs = pen.remainingSeconds % 60;
           const timeStr = `${mins}:${String(secs).padStart(2, "0")}`;
+
+          // Visual distinction: major (red), misconduct (gray), coincidental (blue), minor (amber)
+          let badgeClass: string;
+          let labelClass: string;
+          let label: string;
+          if (pen.isMajor) {
+            badgeClass = "bg-red-900/20 border-red-800/30";
+            labelClass = "text-red-400";
+            label = "MAJ";
+          } else if (pen.isMisconduct) {
+            badgeClass = "bg-gray-800/30 border-gray-700/30";
+            labelClass = "text-gray-400";
+            label = "MIS";
+          } else if (pen.isCoincidental) {
+            badgeClass = "bg-sky-900/20 border-sky-800/30";
+            labelClass = "text-sky-400";
+            label = "4v4";
+          } else {
+            badgeClass = "bg-amber-900/20 border-amber-800/30";
+            labelClass = "text-amber-400";
+            label = "PEN";
+          }
+
           return (
-            <div key={i} className={`flex items-center gap-1 rounded border px-1.5 py-0.5 ${
-              pen.isMajor
-                ? "bg-red-900/20 border-red-800/30"
-                : "bg-amber-900/20 border-amber-800/30"
-            }`}>
-              <span className={`text-[9px] font-bold ${pen.isMajor ? "text-red-400" : "text-amber-400"}`}>
-                {pen.isMajor ? "MAJ" : "PEN"}
+            <div key={i} className={`flex items-center gap-1 rounded border px-1.5 py-0.5 ${badgeClass}`}>
+              <span className={`text-[9px] font-bold ${labelClass}`}>
+                {label}
               </span>
               <span className="text-[9px] text-gray-300 truncate">
                 #{pen.jerseyNumber} {pen.playerName}
