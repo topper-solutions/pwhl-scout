@@ -1,6 +1,7 @@
 import { getTeamRoster, getTeamSchedule } from "@/lib/api";
 import { getTeamMeta, TEAM_LIST } from "@/lib/teams";
 import { TeamLogo } from "@/components/team-logo";
+import { DataFreshness } from "@/components/data-freshness";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -144,6 +145,7 @@ export default async function TeamPage({
             <p className="text-sm text-gray-400 mt-1">
               2025–2026 PWHL Season
             </p>
+            <DataFreshness renderedAt={Date.now()} revalidateSeconds={300} />
           </div>
         </div>
 

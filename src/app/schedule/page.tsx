@@ -3,6 +3,7 @@ import { getTeamMeta } from "@/lib/teams";
 import { TeamFilter } from "@/components/team-filter";
 import { formatDate, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
@@ -75,6 +76,7 @@ export default async function SchedulePage({
           <p className="text-sm text-gray-400 mt-1">
             2025–2026 PWHL Regular Season
           </p>
+          <DataFreshness renderedAt={Date.now()} revalidateSeconds={300} />
         </div>
 
         <TeamFilter baseHref="/schedule" activeTeamId={teamFilter} />

@@ -2,6 +2,7 @@ import { getScorebar, getStandings, getTopScorers } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import { playerName, isGameLive, isGameFinal } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 import type { ScorebarGame, StandingsRow, PlayerStatsRow } from "@/lib/types";
@@ -246,6 +247,7 @@ export default async function HomePage() {
         <p className="text-sm text-gray-400 mt-1">
           Live scores and recent results from the PWHL
         </p>
+        <DataFreshness renderedAt={Date.now()} revalidateSeconds={60} />
       </div>
 
       {scorebarError ? (

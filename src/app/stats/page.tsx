@@ -3,6 +3,7 @@ import { getTeamMeta } from "@/lib/teams";
 import { TeamFilter } from "@/components/team-filter";
 import { val, playerName } from "@/lib/utils";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import Link from "next/link";
 
 export const revalidate = 300;
@@ -99,6 +100,7 @@ export default async function StatsPage({
           <p className="text-sm text-gray-400 mt-1">
             2025–2026 PWHL Regular Season
           </p>
+          <DataFreshness renderedAt={Date.now()} revalidateSeconds={300} />
         </div>
       </div>
 

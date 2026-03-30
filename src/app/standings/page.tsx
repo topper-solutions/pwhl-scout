@@ -1,6 +1,7 @@
 import { getStandings } from "@/lib/api";
 import { getTeamMeta } from "@/lib/teams";
 import { ErrorBanner } from "@/components/error-banner";
+import { DataFreshness } from "@/components/data-freshness";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 
@@ -57,6 +58,7 @@ export default async function StandingsPage() {
         <p className="text-sm text-gray-400 mt-1">
           2025–2026 PWHL Regular Season &middot; 3-2-1-0 points system
         </p>
+        <DataFreshness renderedAt={Date.now()} revalidateSeconds={120} />
       </div>
 
       <div className="glass-card overflow-hidden">

@@ -3,6 +3,7 @@ import { getTeamMeta } from "@/lib/teams";
 import { val, playerName, isGameLive, isGameFinal, periodLabel } from "@/lib/utils";
 import { getPbpLabel } from "@/lib/pbp-labels";
 import { LiveScoreboard } from "@/components/live-scoreboard";
+import { DataFreshness } from "@/components/data-freshness";
 import { TeamLogo } from "@/components/team-logo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -255,6 +256,8 @@ export default async function GamePage({
       >
         &larr; Back to scores
       </Link>
+
+      <DataFreshness renderedAt={Date.now()} revalidateSeconds={60} />
 
       <LiveScoreboard
         gameId={gameId}
