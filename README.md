@@ -19,6 +19,12 @@ Unofficial stats tracker for the Professional Women's Hockey League. Live scores
 - **Data freshness** — staleness indicator warns when ISR-cached data may be outdated
 - **Health monitoring** — `/api/health` endpoint checks upstream API reachability
 
+## Widget
+
+A [Scriptable](https://scriptable.app) widget for your iPhone Home Screen shows live scores, results, and upcoming games at a glance — no app required.
+
+[Setup instructions](docs/scriptable-widget.md) · [Download script](widget/PWHL-Gameday-Widget.js)
+
 ## Getting Started
 
 ```bash
