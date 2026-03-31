@@ -140,6 +140,55 @@ describe("HomePage", () => {
     expect(screen.getByText("No games scheduled today")).toBeInTheDocument();
   });
 
+  it("renders Live status for a live game", async () => {
+    (getScorebar as Mock).mockResolvedValue([
+      {
+        ID: "101",
+        HomeID: "1",
+        VisitorID: "2",
+        HomeGoals: "2",
+        VisitorGoals: "1",
+        GameStatusStringLong: "In Progress",
+        GameStatus: "2",
+        GameDate: "2025-12-01",
+        HomeLongName: "Boston Fleet",
+        VisitorLongName: "Minnesota Frost",
+      },
+    ]);
+    (getStandings as Mock).mockResolvedValue([]);
+    (getTopScorers as Mock).mockResolvedValue([]);
+
+    const jsx = await HomePage();
+    render(jsx);
+
+    expect(screen.getByText("Live")).toBeInTheDocument();
+  });
+
+  it("renders Scheduled status for an upcoming game", async () => {
+    (getScorebar as Mock).mockResolvedValue([
+      {
+        ID: "102",
+        HomeID: "1",
+        VisitorID: "2",
+        HomeGoals: "",
+        VisitorGoals: "",
+        GameStatusStringLong: "",
+        GameStatus: "1",
+        GameDate: "2025-12-01",
+        ScheduledFormattedTime: "7:00 PM",
+        HomeLongName: "Boston Fleet",
+        VisitorLongName: "Minnesota Frost",
+      },
+    ]);
+    (getStandings as Mock).mockResolvedValue([]);
+    (getTopScorers as Mock).mockResolvedValue([]);
+
+    const jsx = await HomePage();
+    render(jsx);
+
+    expect(screen.getByText("Scheduled")).toBeInTheDocument();
+  });
+
   it("renders error banner and no standings/scorers when all reject", async () => {
     (getScorebar as Mock).mockRejectedValue(new Error("fail"));
     (getStandings as Mock).mockRejectedValue(new Error("fail"));

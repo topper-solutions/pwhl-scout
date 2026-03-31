@@ -74,6 +74,16 @@ describe("SchedulePage", () => {
         visiting_goal_count: "1",
         game_status: "Final",
       },
+      {
+        game_id: "201",
+        date_played: "2025-11-28",
+        date_with_day: "Fri Nov 28",
+        home_team: "2",
+        visiting_team: "1",
+        home_goal_count: "2",
+        visiting_goal_count: "4",
+        game_status: "Final",
+      },
     ]);
 
     const jsx = await SchedulePage({ searchParams: Promise.resolve({}) });
