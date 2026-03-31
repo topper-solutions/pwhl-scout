@@ -2,6 +2,8 @@
   "name": "pwhl-gameday",
   "version": "1.1.0",
   "private": true,
+  "license": "MIT",
+  "homepage": "https://topper.solutions/pwhl-gameday",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

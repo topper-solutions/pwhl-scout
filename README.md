@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/topper-solutions/pwhl-gameday/actions/workflows/ci.yml/badge.svg)](https://github.com/topper-solutions/pwhl-gameday/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/murphy-platforms/8e2b3b269fe2a325c4bf2a222685a573/raw/pwhl-gameday-coverage.json)](https://github.com/topper-solutions/pwhl-gameday/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**[Live Demo](https://topper.solutions/pwhl-gameday)**
 
 Unofficial stats tracker for the Professional Women's Hockey League. Live scores, standings, player stats, schedules, and game details with real-time updates during active games.
 
@@ -152,4 +155,4 @@ These keys are publicly visible in thepwhl.com's client-side JavaScript. They ar
 
 ## License
 
-Private project. Not licensed for redistribution.
+MIT — see [LICENSE](LICENSE) for details.
