@@ -118,6 +118,26 @@ describe("/api/health", () => {
     });
   });
 
+  it("reports Firebase as down when fetch throws a network error", async () => {
+    mockFetch(
+      vi.fn()
+        .mockResolvedValueOnce(okResponse())
+        .mockRejectedValueOnce(new Error("Failed to fetch")),
+    );
+    const GET = await getHandler();
+    const res = await GET();
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe("degraded");
+    expect(body.upstreams[0]).toMatchObject({ name: "hockeytech", status: "ok" });
+    expect(body.upstreams[1]).toMatchObject({
+      name: "firebase",
+      status: "down",
+      error: "Failed to fetch",
+    });
+  });
+
   it("includes positive latency values for successful checks", async () => {
     mockFetch(vi.fn().mockResolvedValue(okResponse()));
     const GET = await getHandler();

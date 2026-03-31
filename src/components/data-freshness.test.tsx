@@ -45,4 +45,16 @@ describe("DataFreshness", () => {
     expect(screen.getByText(/may be outdated/)).toBeInTheDocument();
     expect(screen.getByText(/2 min ago/)).toBeInTheDocument();
   });
+
+  it("shows hours-ago format when age exceeds 60 minutes", () => {
+    const now = Date.now();
+    vi.setSystemTime(now + 3_700_000); // 3700s = ~61 minutes → "1h ago"
+    render(<DataFreshness renderedAt={now} revalidateSeconds={60} />);
+
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+
+    expect(screen.getByText(/1h ago/)).toBeInTheDocument();
+  });
 });

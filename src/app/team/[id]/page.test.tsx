@@ -43,7 +43,7 @@ vi.mock("@/components/team-logo", () => ({
   ),
 }));
 
-import TeamPage from "./page";
+import TeamPage, { generateMetadata } from "./page";
 import { getTeamRoster, getTeamSchedule } from "@/lib/api";
 
 describe("TeamPage", () => {
@@ -143,5 +143,16 @@ describe("TeamPage", () => {
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText("Alex Smith")).toBeInTheDocument();
     expect(screen.getByText("Schedule")).toBeInTheDocument();
+  });
+});
+
+describe("generateMetadata", () => {
+  it("returns title and description with team name", async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ id: "1" }),
+    });
+
+    expect(metadata.title).toBe("Boston Fleet | PWHL Gameday");
+    expect(metadata.description).toContain("Boston Fleet");
   });
 });

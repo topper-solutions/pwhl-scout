@@ -87,6 +87,11 @@ describe("val", () => {
     expect(val({ a: "", b: "found" }, "a", "b")).toBe("found");
   });
 
+  it("returns em-dash when obj is null or undefined", () => {
+    expect(val(null, "a")).toBe("—");
+    expect(val(undefined, "a")).toBe("—");
+  });
+
   it("returns em-dash when no keys match", () => {
     expect(val({}, "a", "b")).toBe("—");
     expect(val({ x: null }, "a")).toBe("—");
